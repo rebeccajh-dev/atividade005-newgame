@@ -27,7 +27,7 @@ UFO_COLOR = (128, 128, 128)
 # Global variables
 background_color = (40, 20, 0)
 game_instances = [] # Made to easily track and create different interactable objects
-square_size = 30
+square_size = 50
 
 # Class for player(s) functionalities, so we can make multiple players
 # With their own properties
@@ -239,42 +239,52 @@ class Ufo:
         self.ufos = []
         self.center_position()
 
+    def ufo_collide_check(self, bullet):
+        if not self.ufos:
+            return
+
+        # check the collides by the lists
+        for i in range(len(self.ufos)):
+            rect, strength = self.ufos[i]
+
+            # Checks if the bullets collides w ufo
+            if bullet.rect.colliderect(rect) and bullet.can_hit:
+                bullet.can_hit = False
+                bullet.is_alive = False
+                self.take_damage(i)
+                break
+
+    def take_damage(self, index):
+        if index < len(self.ufos):
+            self.ufos[index][1] -= 1
+            if self.ufos[index][1] < 0:
+                self.ufos[index][1] = 0  # Manter a força em zero
+
     def center_position(self):
-        # quantity of bricks
-        top_row = 3
-        middle_row = 5
-        bottom_row = 3
+        # Define the UFO grid as a list of lists
+        ufo_grid = [
+            [1, 1, 1],
+            [1, 1, 1, 1, 1],
+            [1, 1, 1]
+        ]
 
-        top_row_width = top_row * self.width
-        middle_row_width = middle_row * self.width
-        bottom_row_width = bottom_row * self.width
+        # Calculate the total height of the UFOs
+        total_height = sum(len(row) * self.height for row in ufo_grid)
 
-        y = (SCREEN_HEIGHT - (3 * self.height)) // 2
+        # Calculate the starting y position to center the rows
+        y = (SCREEN_HEIGHT - 400)
 
-        # calculate the x positions
-        top_row_x = (SCREEN_WIDTH - top_row_width) // 2
-        middle_row_x = (SCREEN_WIDTH - middle_row_width) // 2
-        bottom_row_x = (SCREEN_WIDTH - bottom_row_width) // 2
+        for row_index, strengths in enumerate(ufo_grid):
+            strength = strengths[0]  # Assuming uniform strength for each column in this row
+            row_width = len(strengths) * self.width
 
-        # add bricks in top
-        strength = 4
-        for col in range(top_row):
-            rect = pg.Rect(top_row_x + col * self.width, y, self.width, self.height)
-            self.ufos.append([rect, strength])
+            # Calculate the starting x position for the current row
+            x = (SCREEN_WIDTH - row_width) // 2
 
-
-        # add bricks in the middle
-        strength = 3
-        for col in range(middle_row):
-            rect = pg.Rect(middle_row_x + col * self.width, y + self.height, self.width, self.height)
-            self.ufos.append([rect, strength])
-
-        # add bricks in the bottom
-        strength = 2
-        for col in range(bottom_row):
-            rect = pg.Rect(bottom_row_x + col * self.width, y + 2 * self.height, self.width, self.height)
-            self.ufos.append([rect, strength])
-
+            # Add UFOs for the current row
+            for col_index, strength in enumerate(strengths):
+                rect = pg.Rect(x + col_index * self.width, y + row_index * self.height, self.width, self.height)
+                self.ufos.append([rect, strength])
 
     def draw_UFO(self, surface):
         if self.live_ball:
@@ -284,7 +294,7 @@ class Ufo:
                 color = UFO_COLOR if strength > 0 else COLOR_RED
                 pg.draw.rect(surface, color, rect)
                 pg.draw.rect(surface, background_color, rect, 2)
-
+                
 class Game:
     def __init__(self):
         self.on_menu = True
@@ -356,6 +366,7 @@ class Game:
                 instance.shield_collide_check(self.player_1)
                 instance.player_collide_check(self.player_2)
                 instance.shield_collide_check(self.player_2)
+                self.ufo.ufo_collide_check(instance)
 
             # Clearing objects if offscreen or lived too long
             if ((SCREEN_WIDTH < instance.rect.x or instance.rect.x < 0) or
