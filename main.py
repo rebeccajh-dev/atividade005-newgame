@@ -21,10 +21,13 @@ BASE_ENEMY_SPEED = 2
 MAX_BULLET_SPEED = 5
 
 PLAYER_COLORS = [(120, 255, 120), (200, 120, 200)]
+COLOR_RED = (255, 0, 0)
+UFO_COLOR = (128, 128, 128)
 
 # Global variables
 background_color = (40, 20, 0)
 game_instances = [] # Made to easily track and create different interactable objects
+square_size = 30
 
 # Class for player(s) functionalities, so we can make multiple players
 # With their own properties
@@ -227,6 +230,61 @@ class Bullet:
             self.can_hit = False
             self.is_alive = False
 
+#Draw UFO
+class Ufo:
+    def __init__(self):
+        self.live_ball = True
+        self.width = square_size
+        self.height = square_size
+        self.ufos = []
+        self.center_position()
+
+    def center_position(self):
+        # quantity of bricks
+        top_row = 3
+        middle_row = 5
+        bottom_row = 3
+
+        top_row_width = top_row * self.width
+        middle_row_width = middle_row * self.width
+        bottom_row_width = bottom_row * self.width
+
+        y = (SCREEN_HEIGHT - (3 * self.height)) // 2
+
+        # calculate the x positions
+        top_row_x = (SCREEN_WIDTH - top_row_width) // 2
+        middle_row_x = (SCREEN_WIDTH - middle_row_width) // 2
+        bottom_row_x = (SCREEN_WIDTH - bottom_row_width) // 2
+
+        # add bricks in top
+        strength = 4
+        for col in range(top_row):
+            rect = pg.Rect(top_row_x + col * self.width, y, self.width, self.height)
+            self.ufos.append([rect, strength])
+
+
+        # add bricks in the middle
+        strength = 3
+        for col in range(middle_row):
+            rect = pg.Rect(middle_row_x + col * self.width, y + self.height, self.width, self.height)
+            self.ufos.append([rect, strength])
+
+        # add bricks in the bottom
+        strength = 2
+        for col in range(bottom_row):
+            rect = pg.Rect(bottom_row_x + col * self.width, y + 2 * self.height, self.width, self.height)
+            self.ufos.append([rect, strength])
+
+
+    def draw_UFO(self, surface):
+        if self.live_ball:
+            for brick in self.ufos:
+                rect, strength = brick
+                # change the color based in the strength
+                color = UFO_COLOR if strength > 0 else COLOR_RED
+                pg.draw.rect(surface, color, rect)
+                pg.draw.rect(surface, background_color, rect, 2)
+
 class Game:
     def __init__(self):
         self.on_menu = True
@@ -235,6 +293,7 @@ class Game:
         self.player_2 = None
         self.player_count = 0
         self.game_tick = 0
+        self.ufo = Ufo()
 
     def run(self):
         while True:
@@ -269,6 +328,7 @@ class Game:
         SCREEN.fill(background_color)
         self.create_instances()
         keys = pg.key.get_pressed()
+        self.ufo.draw_UFO(SCREEN)
 
         # Player movement check
         if self.player_1:
