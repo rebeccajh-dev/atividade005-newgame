@@ -1,3 +1,4 @@
+import math
 import pygame as pg
 import random
 import sys
@@ -230,14 +231,59 @@ class Bullet:
             self.can_hit = False
             self.is_alive = False
 
+class Bandit:
+    def __init__(self, start_x, start_y):
+        self.name = 'BANDIT'
+        self.live_bandit = True
+        self.rect = pg.Rect(start_x, start_y, 40, 40)  # bandit size
+        self.bullets = []
+        self.shoot_timer = 0
+        self.speed = random.choice([-1, 2])
+
+    def update(self, target_position):
+        self.shoot_timer += 1
+
+        # bandit moviment
+        self.rect.y += self.speed
+        if self.rect.y < 0 or self.rect.y > (SCREEN_HEIGHT - 10):
+            self.speed *= -1 
+
+        # Shoot bullets each 100 ticks
+        if self.shoot_timer >= 100:
+            self.shoot(target_position)
+            self.shoot_timer = 0  
+
+
+    def shoot(self, target_position):
+        direction_x = target_position[0] - self.rect.centerx
+        direction_y = target_position[1] - self.rect.centery
+        magnitude = math.sqrt(direction_x**2 + direction_y**2)
+        if magnitude != 0:
+            direction = (direction_x / magnitude * 3, direction_y / magnitude * 3)  
+            bullet_position = (self.rect.centerx, self.rect.bottom)
+            bullet = Bullet(bullet_position, direction)
+            self.bullets.append(bullet)
+
+    def update_bullets(self):
+        for bullet in self.bullets[:]:
+            bullet.update()
+            if not bullet.is_alive:
+                self.bullets.remove(bullet)
+
+    def draw_bandit(self):
+        pg.draw.rect(SCREEN, (255, 0, 0), self.rect) 
+
 #Draw UFO
 class Ufo:
     def __init__(self):
         self.live_ball = True
         self.width = square_size
         self.height = square_size
+        self.size = square_size
         self.ufos = []
         self.center_position()
+        self.rect = pg.Rect(SCREEN_WIDTH // 2 - self.size // 2, SCREEN_HEIGHT // 2 - self.size // 2, self.size,
+                            self.size)
 
     def ufo_collide_check(self, bullet):
         if not self.ufos:
@@ -296,117 +342,126 @@ class Ufo:
                 pg.draw.rect(surface, background_color, rect, 2)
                 
 class Game:
-    def __init__(self):
-        self.on_menu = True
-        self.clock = pg.time.Clock()
-        self.player_1 = None
-        self.player_2 = None
-        self.player_count = 0
-        self.game_tick = 0
-        self.ufo = Ufo()
+        def __init__(self):
+            self.on_menu = True
+            self.clock = pg.time.Clock()
+            self.player_1 = None
+            self.player_2 = None
+            self.player_count = 0
+            self.game_tick = 0
+            self.ufo = Ufo()
+            self.bandits = []
+            self.max_bandits = 1
+            self.left_bandits_count = 0
+            self.right_bandits_count = 0
 
-    def run(self):
-        while True:
-            self.update_game_state()
-            self.handle_events()
-            self.clock.tick(FRAMERATE)
-            self.game_tick = pg.time.get_ticks()    # Save the game time in milliseconds
+        def run(self):
+            while True:
+                self.update_game_state()
+                self.handle_events()
+                self.clock.tick(FRAMERATE)
+                self.game_tick = pg.time.get_ticks()  # Save the game time in milliseconds
 
-    def handle_events(self):
-        keys = pg.key.get_pressed()
+        def handle_events(self):
+            keys = pg.key.get_pressed()
 
-        # Detecting player joining the game
-        if keys[pg.K_w] or keys[pg.K_a] or keys[pg.K_s] or keys[pg.K_d]:
-            if not self.player_1:
-                color = PLAYER_COLORS[self.player_count]
-                self.player_count += 1
-                self.player_1 = Player('WASD', self.player_count, color)
-        if keys[pg.K_UP] or keys[pg.K_LEFT] or keys[pg.K_DOWN] or keys[pg.K_RIGHT]:
-            if not self.player_2:
-                color = PLAYER_COLORS[self.player_count]
-                self.player_count += 1
-                self.player_2 = Player('ARROWS', self.player_count, color)
-
-        for event in pg.event.get():
-            # Quit the game
-            if event.type == pg.QUIT:
-                pg.quit()
-                sys.exit()
-
-    # Merged "draw" function with game state to make bullets possible
-    def update_game_state(self):
-        SCREEN.fill(background_color)
-        self.create_instances()
-        keys = pg.key.get_pressed()
-        self.ufo.draw_UFO(SCREEN)
-
-        # Player movement check
-        if self.player_1:
+            # Detecting player joining the game
             if keys[pg.K_w] or keys[pg.K_a] or keys[pg.K_s] or keys[pg.K_d]:
-                self.player_1.move(keys)
-                self.player_1.moving = True
-            else:
-                self.player_1.moving = False
-        if self.player_2:
+                if not self.player_1:
+                    color = PLAYER_COLORS[self.player_count]
+                    self.player_count += 1
+                    self.player_1 = Player('WASD', self.player_count, color)
             if keys[pg.K_UP] or keys[pg.K_LEFT] or keys[pg.K_DOWN] or keys[pg.K_RIGHT]:
-                self.player_2.move(keys)
-                self.player_2.moving = True
-            else:
-                self.player_2.moving = False
+                if not self.player_2:
+                    color = PLAYER_COLORS[self.player_count]
+                    self.player_count += 1
+                    self.player_2 = Player('ARROWS', self.player_count, color)
 
-        # Go through all instances and check their functions and constraints
-        for instance in game_instances[:]:
-            instance.update()
-            if self.game_tick % FRAMERATE == 0:
-                instance.lifetime += 1
+            for event in pg.event.get():
+                # Quit the game
+                if event.type == pg.QUIT:
+                    pg.quit()
+                    sys.exit()
 
-            # Specifying functions for certain instances using their name
-            if instance.name == 'BULLET':
-                instance.player_collide_check(self.player_1)
-                instance.shield_collide_check(self.player_1)
-                instance.player_collide_check(self.player_2)
-                instance.shield_collide_check(self.player_2)
-                self.ufo.ufo_collide_check(instance)
+        # just for now, trying to change for the class Bandit
+        def bandit_position(self):
+            if self.game_tick % 300 == 0:  # add a bandit each 300 ticks
+                if self.left_bandits_count < self.max_bandits:
+                    start_x = 10
+                    start_y = random.randint(10, SCREEN_HEIGHT - 40)
+                    bandit = Bandit(start_x, start_y)
+                    self.bandits.append(bandit)
+                    self.left_bandits_count += 1
 
-            # Clearing objects if offscreen or lived too long
-            if ((SCREEN_WIDTH < instance.rect.x or instance.rect.x < 0) or
-                (SCREEN_HEIGHT < instance.rect.y or instance.rect.y < 0) or
-                instance.lifetime > instance.max_lifetime) or not instance.is_alive:
-                game_instances.remove(instance)
+                if self.right_bandits_count < self.max_bandits:
+                    start_x = SCREEN_WIDTH - 50
+                    start_y = random.randint(10, SCREEN_HEIGHT - 40)
+                    bandit = Bandit(start_x, start_y)
+                    self.bandits.append(bandit)
+                    self.right_bandits_count += 1
 
-        # Drawing players if existing
-        if self.player_1:
-            self.player_1.draw()
-        if self.player_2:
-            self.player_2.draw()
+        # Merged "draw" function with game state to make bullets possible
+        def update_game_state(self):
+            SCREEN.fill(background_color)
+            keys = pg.key.get_pressed()
+            self.ufo.draw_UFO(SCREEN)
+            self.bandit_position()
 
-        pg.display.flip()
+            for bandit in self.bandits:
+                bandit.update(self.ufo.rect.topleft)  # Pass ufo as target
+                bandit.draw_bandit()
+                bandit.update_bullets()
 
-    # Constantly making instances, spawning bullets should be replaced
-    # With the cowboy NPCs instead, and they should fire the bullets
-    def create_instances(self):
-        if self.game_tick % 30 == 0:  # Frequency of bullets spawned
-            bullet_side = random.randint(1, 4)
-            bullet_position = [0, 0]
-            bullet_direction = [0, 0]
+                # collision of bullets w ufo
+                for bullet in bandit.bullets:
+                    bullet.shield_collide_check(self.player_1)  # collision w shield player 1
+                    bullet.player_collide_check(self.player_1)
+                    bullet.player_collide_check(self.player_2)
+                    bullet.shield_collide_check(self.player_2)
+                    self.ufo.ufo_collide_check(bullet)
 
-            # Randomly spawn bullets in different sides of the screen
-            if bullet_side == 1:  # Left
-                bullet_position = [0, random.randint(0, SCREEN_HEIGHT)]
-                bullet_direction = [random.randint(2, 4), random.randint(-3, 3)]
-            elif bullet_side == 2:  # Right
-                bullet_position = [SCREEN_WIDTH, random.randint(0, SCREEN_HEIGHT)]
-                bullet_direction = [random.randint(-4, -2), random.randint(-3, 3)]
-            elif bullet_side == 3:  # Up
-                bullet_position = [random.randint(0, SCREEN_WIDTH), 0]
-                bullet_direction = [random.randint(-3, 3), random.randint(2, 4)]
-            elif bullet_side == 4:  # Down
-                bullet_position = [random.randint(0, SCREEN_WIDTH), SCREEN_HEIGHT]
-                bullet_direction = [random.randint(-3, 3), random.randint(-4, -2)]
+                    # Player movement check
+            if self.player_1:
+                if keys[pg.K_w] or keys[pg.K_a] or keys[pg.K_s] or keys[pg.K_d]:
+                    self.player_1.move(keys)
+                    self.player_1.moving = True
+                else:
+                    self.player_1.moving = False
+            if self.player_2:
+                if keys[pg.K_UP] or keys[pg.K_LEFT] or keys[pg.K_DOWN] or keys[pg.K_RIGHT]:
+                    self.player_2.move(keys)
+                    self.player_2.moving = True
+                else:
+                    self.player_2.moving = False
 
-            # Create the new bullet and add it into instances list
-            new_bullet = Bullet(bullet_position, bullet_direction)
-            game_instances.append(new_bullet)
+            # probably we will not gonna need that
+            # # Go through all instances and check their functions and constraints
+            # for instance in game_instances[:]:
+            #     instance.update()
+            #     if self.game_tick % FRAMERATE == 0:
+            #         instance.lifetime += 1
+
+            #     # Specifying functions for certain instances using their name
+            #     if instance.name == 'BULLET':
+            #         instance.player_collide_check(self.player_1)
+            #         instance.shield_collide_check(self.player_1)
+            #         instance.player_collide_check(self.player_2)
+            #         instance.shield_collide_check(self.player_2)
+            #         self.ufo.ufo_collide_check(instance)
+
+            #     # Clearing objects if offscreen or lived too long
+            #     if ((SCREEN_WIDTH < instance.rect.x or instance.rect.x < 0) or
+            #         (SCREEN_HEIGHT < instance.rect.y or instance.rect.y < 0) or
+            #         instance.lifetime > instance.max_lifetime) or not instance.is_alive:
+            #         game_instances.remove(instance)
+
+            # Drawing players if existing
+            if self.player_1:
+                self.player_1.draw()
+            if self.player_2:
+                self.player_2.draw()
+
+            pg.display.flip()
 
 
 if __name__ == '__main__':
