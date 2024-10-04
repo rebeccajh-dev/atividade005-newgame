@@ -189,6 +189,7 @@ class Bullet:
         self.can_hit = True  # Prevent ball from hitting an object more than intended
         self.player_owned = False  # Check for the ball to only hit enemies
         self.is_alive = True
+        self.reflect = False
 
     # Constantly update the instance (position, drawing, etc)
     def update(self):
@@ -218,6 +219,7 @@ class Bullet:
             self.color = player.shield_color
             self.can_hit = False
             self.player_owned = True
+            self.reflect = True
 
 
     def player_collide_check(self, player):
@@ -238,20 +240,39 @@ class Bandit:
         self.rect = pg.Rect(start_x, start_y, 40, 40)  # bandit size
         self.bullets = []
         self.shoot_timer = 0
-        self.speed = random.choice([-1, 2])
+        self.move_timer = 0
+        self.interval = 300 #(300 ticks is equal a 5 sec)
+        self.direction = (random.choice([-1, 1]), random.choice([-1, 1]))
+        self.in_screen = False
 
+    def move_bandit(self):
+        if self.live_bandit:
+            new_x = self.rect.x + self.direction[0] * 2
+            new_y = self.rect.y + self.direction[1] * 2
+
+            # verify the limits of the screen
+            if new_x < 0 or new_x + self.rect.width > SCREEN_WIDTH:
+                self.direction = (-self.direction[0], self.direction[1])
+            if new_y < 0 or new_y + self.rect.height > SCREEN_HEIGHT:
+                self.direction = (self.direction[0], -self.direction[1])
+
+            self.rect.x += self.direction[0] * 2
+            self.rect.y += self.direction[1] * 2
+        
     def update(self, target_position):
         self.shoot_timer += 1
 
-        # bandit moviment
-        self.rect.y += self.speed
-        if self.rect.y < 0 or self.rect.y > (SCREEN_HEIGHT - 10):
-            self.speed *= -1 
+       # move each 5 secs
+        if self.move_timer >= self.interval:
+            self.move_bandit()
+            self.direction = (random.choice([-5, 5]), random.choice([-5, 5]))
+            self.move_timer = 0
 
-        # Shoot bullets each 100 ticks
+        self.shoot_timer += 1
+
         if self.shoot_timer >= 100:
             self.shoot(target_position)
-            self.shoot_timer = 0  
+            self.shoot_timer = 0
 
 
     def shoot(self, target_position):
@@ -265,9 +286,22 @@ class Bandit:
             self.bullets.append(bullet)
 
     def update_bullets(self):
-        for bullet in self.bullets[:]:
+        bullets_to_remove = []
+        for bullet in self.bullets:
             bullet.update()
+
+            # Verify the collision w bandit
+            if self.live_bandit and bullet.reflect and bullet.rect.colliderect(self.rect):
+                self.live_bandit = False
+                bullet.is_alive = False
+                bullets_to_remove.append(bullet)
+                break
+
             if not bullet.is_alive:
+                bullets_to_remove.append(bullet)
+
+        for bullet in bullets_to_remove:
+            if bullet in self.bullets:
                 self.bullets.remove(bullet)
 
     def draw_bandit(self):
@@ -309,9 +343,9 @@ class Ufo:
     def center_position(self):
         # Define the UFO grid as a list of lists
         ufo_grid = [
-            [1, 1, 1],
             [1, 1, 1, 1, 1],
-            [1, 1, 1]
+            [1, 1],
+            [1, 1, 1, 1, 1]
         ]
 
         # Calculate the total height of the UFOs
@@ -351,7 +385,7 @@ class Game:
             self.game_tick = 0
             self.ufo = Ufo()
             self.bandits = []
-            self.max_bandits = 1
+            self.max_bandits = 2
             self.left_bandits_count = 0
             self.right_bandits_count = 0
 
@@ -408,9 +442,10 @@ class Game:
             self.bandit_position()
 
             for bandit in self.bandits:
-                bandit.update(self.ufo.rect.topleft)  # Pass ufo as target
-                bandit.draw_bandit()
-                bandit.update_bullets()
+                if bandit.live_bandit:
+                    bandit.update(self.ufo.rect.topleft)  # Pass ufo as target
+                    bandit.update_bullets()
+                    bandit.draw_bandit()
 
                 # collision of bullets w ufo
                 for bullet in bandit.bullets:
