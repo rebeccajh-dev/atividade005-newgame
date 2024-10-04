@@ -5,10 +5,17 @@ import sys
 
 pg.init()
 
+# Screen configuration
+SCREEN_WIDTH = 960
+SCREEN_HEIGHT = 620
+FRAMERATE = 60
+SCREEN = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+
 # Basic color configuration
 PLAYER_COLORS = [(120, 255, 120), (200, 120, 200)]
 COLOR_WHITE = (255, 255, 255)
 COLOR_BLACK = (0, 0, 0)
+COLOR_RED = (255, 0, 0)
 COLOR_DAMAGED = (160, 0, 0)
 UFO_COLORS = [
     (240, 240, 240),
@@ -26,23 +33,6 @@ TERRAIN_COLORS = [
     (80, 60, 40)
 ]
 
-# Screen & Interface configuration
-SCREEN_WIDTH = 960
-SCREEN_HEIGHT = 620
-FRAMERATE = 60
-SCREEN = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-
-NORMAL_FONT = pg.font.Font("assets/retro_font.ttf", 40)
-
-timer_string = NORMAL_FONT.render("00", True, COLOR_WHITE)
-timer_text_rect = timer_string.get_rect(center=(SCREEN_WIDTH / 2, 30))
-
-points_string = NORMAL_FONT.render('00000', True, COLOR_WHITE)
-points_text_rect = points_string.get_rect(center=(90, 30))
-
-points_string_2 = NORMAL_FONT.render('000', True, COLOR_WHITE)
-points_text_rect_2 = points_string_2.get_rect(center=(SCREEN_WIDTH - 110, 30))
-
 # Constant variables
 BASE_PLAYER_SIZE = (50, 50)
 BASE_SHIELD_X = 130
@@ -53,11 +43,26 @@ ROUND_TIME = 180
 BASE_PLAYER_SPEED = 4
 BASE_ENEMY_SPEED = 2
 MAX_BULLET_SPEED = 5
-RANDOM_MOVE = [-1.5, -1, -0.5, 0.25, 0, 0.25, 0.5, 1, 1.5]
+RANDOM_MOVE = [-1, -0.5, 0.25, 0, 0.25, 0.5, 1]
+
+# Interface configuration
+TEXT_FONT = pg.font.Font("assets/retro_font.ttf", 24)
+NORMAL_FONT = pg.font.Font("assets/retro_font.ttf", 40)
+TITLE_FONT = pg.font.Font("assets/retro_font.ttf", 72)
+
+TITLE_SPRITE = pg.image.load(f'assets/player_sprites/1/body.png')
+TITLE_SPRITE = pg.transform.scale(TITLE_SPRITE, BASE_PLAYER_SIZE)
+TITLE_SPRITE_RECT = TITLE_SPRITE.get_rect()
+TITLE_SPRITE_RECT.center = (SCREEN_WIDTH // 2, 440)
+
+TITLE_SPRITE_EYES = pg.image.load(f'assets/player_sprites/1/eyes.png')
+TITLE_SPRITE_EYES = pg.transform.scale(TITLE_SPRITE_EYES, BASE_PLAYER_SIZE)
+TITLE_SPRITE_EYES_RECT = TITLE_SPRITE_EYES.get_rect()
+TITLE_SPRITE_EYES_RECT.center = ((SCREEN_WIDTH // 2) - 4, 440)
 
 # Global variables
+menu_color = (10, 10, 30)
 background_color = (40, 20, 0)
-game_instances = [] # Made to easily track and create different interactable objects
 square_size = 25
 
 # Class for player(s) functionalities, so we can make multiple players
@@ -202,7 +207,12 @@ class Player:
         if not self.facing_up:
             SCREEN.blit(self.eyes, rect_pos)
         if self.shield_enabled:
+            self.eyes.set_alpha(255)
+            self.sprite.set_alpha(255)
             pg.draw.rect(SCREEN, self.shield_color, self.shield_rect)
+        else:
+            self.eyes.set_alpha(128)
+            self.sprite.set_alpha(128)
 
 # Class for spawning bullets and handling their behaviour,
 # They have a position to be spawned at and a direction to constantly go
@@ -259,7 +269,7 @@ class Bullet:
             return
 
         # Deactivate shield and start cooldown timer if hit player
-        if self.rect.colliderect(player.rect) and not self.player_owned[0]:
+        if self.rect.colliderect(player.rect) and not self.player_owned[0] and player.shield_enabled:
             player.shield_enabled = False
             player.shield_cooldown = 0
             self.can_hit = False
@@ -284,7 +294,7 @@ class Bandit:
         self.move_timer = 0
         self.base_shoot_cd = 180
         self.shoot_cd = random.randint(self.base_shoot_cd, int(self.base_shoot_cd * 2))
-        self.move_cd = random.randint(180, 900)
+        self.move_cd = random.randint(120, 200)
         self.moving_time = random.randint(30, 180)
         self.direction = (random.choice(RANDOM_MOVE), random.choice(RANDOM_MOVE))
         self.in_screen = False
@@ -306,9 +316,9 @@ class Bandit:
             new_y = self.rect.y + self.direction[1] * 2
 
             # verify the limits of the screen
-            if new_x < 0 or new_x + self.rect.width > SCREEN_WIDTH:
+            if new_x < 20 or new_x + self.rect.width > SCREEN_WIDTH - 20:
                 self.direction = (-self.direction[0], self.direction[1])
-            if new_y < 0 or new_y + self.rect.height > SCREEN_HEIGHT:
+            if new_y < 20 or new_y + self.rect.height > SCREEN_HEIGHT - 20:
                 self.direction = (self.direction[0], -self.direction[1])
 
             self.rect.x += self.direction[0] * 2
@@ -432,6 +442,7 @@ class Bandit:
 class Ufo:
     def __init__(self):
         self.live_ball = True
+        self.fully_broken = False
         self.width = square_size
         self.height = square_size
         self.size = square_size
@@ -444,9 +455,15 @@ class Ufo:
         if not self.ufos:
             return
 
+        brick_amount = len(self.ufos)
+        broken_amount = 0
+
         # check the collides by the lists
-        for i in range(len(self.ufos)):
+        for i in range(brick_amount):
             rect, strength, brick_row = self.ufos[i]
+
+            if self.ufos[i][1] <= 0:
+                broken_amount += 1
 
             # Checks if the bullets collides w ufo
             if (bullet.rect.colliderect(rect) and bullet.can_hit
@@ -455,6 +472,9 @@ class Ufo:
                 bullet.is_alive = False
                 self.take_damage(i)
                 break
+
+        if broken_amount >= brick_amount:
+            self.fully_broken = True
 
     def take_damage(self, index):
         if index < len(self.ufos):
@@ -515,6 +535,50 @@ class Terrain:
         SCREEN.blit(self.sprite, self.rect)
 
 
+# Class made to handle managing text and applying effects or changes
+class Text:
+    def __init__(self, text, rect, size, base_color=(255, 255, 255), blink_cd=15, blink_color=(255, 255, 200)):
+        self.text = text
+        self.rect = rect
+        self.size = size
+        self.enabled = True
+        self.visible = True
+
+        # Visual effects for text
+        self.blink = False
+        self.color_blink = False
+        self.base_color = base_color
+        self.current_color = base_color
+        self.blink_color = blink_color
+        self.blink_tick = 0
+        self.blink_cd = blink_cd
+
+    def blink_text(self):
+        if self.enabled and self.blink:
+            if self.blink_tick >= self.blink_cd == 0 and self.visible:
+                self.visible = False
+            elif self.blink_tick >= self.blink_cd * 2:
+                self.visible = True
+                self.blink_tick = 0
+
+    def blink_text_color(self):
+        if self.enabled and self.color_blink:
+            if self.blink_tick >= self.blink_cd == 0 and self.visible:
+                self.current_color = self.blink_color
+            elif self.blink_tick >= self.blink_cd * 2:
+                self.current_color = self.base_color
+                self.blink_tick = 0
+
+    def draw(self):
+        if self.enabled and self.visible:
+            self.blink_tick += 1
+            self.blink_text()
+            self.blink_text_color()
+
+            render_text = self.size.render(self.text, True, self.base_color)
+            render_rect = render_text.get_rect(center=self.rect)
+            SCREEN.blit(render_text, render_rect)
+
 class Game:
         def __init__(self):
             self.on_menu = True
@@ -524,11 +588,22 @@ class Game:
             self.player_count = 0
             self.game_tick = 0
             self.game_timer = 0
+            self.difficulty_time = 15   # Time in seconds of when difficulty increases
+            self.ambush_time = random.randint(80, 100)   # Time in seconds of when ambush mode activates
 
-            self.p1_points_text = points_string
-            self.p2_points_text = points_string_2
-            self.timer_text = timer_string
+            # Creating text as class objects
+            self.title_text = Text('< WESTERN RAID >', (SCREEN_WIDTH / 2, 100), TITLE_FONT)
+            self.start_text = Text('press WASD/ARROW keys to start',
+                                   (SCREEN_WIDTH / 2, 300), TEXT_FONT, COLOR_WHITE, 30)
 
+            self.p1_points_text = Text('00000', (90, 30), NORMAL_FONT)
+            self.p2_points_text = Text('00000', (SCREEN_WIDTH - 90, 30), NORMAL_FONT)
+            self.timer_text = Text('00:00', (SCREEN_WIDTH / 2, 30),
+                                   NORMAL_FONT, COLOR_WHITE, 30, (0, 255, 0))
+            self.ambush_text = Text('!! AMBUSH INCOMING !!', (SCREEN_WIDTH / 2, 80), TEXT_FONT,
+                                    COLOR_RED, 15)
+
+            self.start_text.blink = True
             self.ufo = Ufo()
             self.bandits = []
             self.terrain = []
@@ -536,20 +611,28 @@ class Game:
             self.bandit_count = 0
             self.bandit_spawnrate = 120
 
-            # Grid used to spawn terrain, set to 0 parts where it shouldn't spawn
+            self.draw_map()
+
+        def draw_map(self):
+            self.ufo = Ufo()
+            self.terrain = []
+
+            # Grid used to spawn terrain, 1 allows spawning and 0 makes it empty
+            # IMPORTANT: The rotation of the grid is different from the rotation
+            # of the screen by 90 degrees clockwise
             terrain_grid = [
-                [1, 1, 1, 1, 1, 1, 1, 1, 1],
-                [1, 1, 1, 1, 1, 1, 1, 1, 1],
-                [1, 1, 1, 1, 1, 1, 1, 1, 1],
-                [1, 1, 1, 0, 0, 0, 1, 1, 1],
-                [1, 1, 0, 0, 0, 0, 0, 1, 1],
-                [1, 0, 0, 0, 0, 0, 0, 0, 1],
-                [1, 0, 0, 0, 0, 0, 0, 0, 1],
-                [1, 1, 0, 0, 0, 0, 0, 1, 1],
-                [1, 1, 1, 0, 0, 0, 1, 1, 1],
-                [1, 1, 1, 1, 1, 1, 1, 1, 1],
-                [1, 1, 1, 1, 1, 1, 1, 1, 1],
-                [1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1],
+                [1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+                [1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1],
+                [1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1],
+                [1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+                [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             ]
             terrain_counter = 1
 
@@ -560,7 +643,7 @@ class Game:
                     if column != 0 and terrain_counter % random.randint(1, 12) == 0:
                         random_index = random.randint(1, 4)
 
-                        if random_index != 3: # Condition for larger sprites
+                        if random_index != 3:  # Condition for larger sprites
                             terrain_size = 70
                         else:
                             terrain_size = 140
@@ -610,12 +693,12 @@ class Game:
                 if spawn_direction == 'left':
                     start_pos[0] = -50
                     start_pos[1] = random.randint(10, SCREEN_HEIGHT - 40)
-                    start_pos[2] = random.randint(10, 100)
+                    start_pos[2] = random.randint(30, 100)
                     start_pos[3] = start_pos[1]
                 if spawn_direction == 'right':
                     start_pos[0] = SCREEN_WIDTH
                     start_pos[1] = random.randint(10, SCREEN_HEIGHT - 40)
-                    start_pos[2] = SCREEN_WIDTH - random.randint(50, 140)
+                    start_pos[2] = SCREEN_WIDTH - random.randint(70, 140)
                     start_pos[3] = start_pos[1]
 
                 bandit = Bandit(start_pos)
@@ -623,15 +706,30 @@ class Game:
 
         # Merged "draw" function with game state to make bullets possible
         def update_game_state(self):
-            SCREEN.fill(background_color)
-
             keys = pg.key.get_pressed()
-            for terrain in self.terrain:
-                terrain.draw()
 
-            self.ufo.draw_UFO(SCREEN)
+            if self.on_menu:
+                SCREEN.fill(menu_color)
+                self.title_text.draw()
+                self.start_text.draw()
+                SCREEN.blit(TITLE_SPRITE, TITLE_SPRITE_RECT)
+                SCREEN.blit(TITLE_SPRITE_EYES, TITLE_SPRITE_EYES_RECT)
+            else:
+                SCREEN.fill(background_color)
 
-            if not self.on_menu:
+                for terrain in self.terrain:
+                    terrain.draw()
+
+                self.ufo.draw_UFO(SCREEN)
+
+                if self.ufo.fully_broken:
+                    self.on_menu = True
+                    self.game_timer = 0
+                    self.bandits = []
+                    self.player_1 = None
+                    self.player_2 = None
+                    return
+
                 self.bandit_position()
                 self.max_bandits = 2 + (2 * self.player_count)
                 self.bandit_spawnrate = int(120 - (15 * self.player_count))
@@ -664,34 +762,34 @@ class Game:
                     if self.game_tick % FRAMERATE == 0:
                         bandit.lifetime += 1
 
-            # Player movement check and drawing
-            if self.player_1:
-                if keys[pg.K_w] or keys[pg.K_a] or keys[pg.K_s] or keys[pg.K_d]:
-                    self.player_1.move(keys)
-                    self.player_1.moving = True
-                else:
-                    self.player_1.moving = False
+                # Player movement check and drawing
+                if self.player_1:
+                    if keys[pg.K_w] or keys[pg.K_a] or keys[pg.K_s] or keys[pg.K_d]:
+                        self.player_1.move(keys)
+                        self.player_1.moving = True
+                    else:
+                        self.player_1.moving = False
 
-                self.player_1.draw()
-                points_amount = str("{:05d}".format(self.player_1.score))
-                self.p1_points_text = NORMAL_FONT.render(points_amount, True, COLOR_WHITE)
-                SCREEN.blit(self.p1_points_text, points_text_rect)
-            if self.player_2:
-                if keys[pg.K_UP] or keys[pg.K_LEFT] or keys[pg.K_DOWN] or keys[pg.K_RIGHT]:
-                    self.player_2.move(keys)
-                    self.player_2.moving = True
-                else:
-                    self.player_2.moving = False
+                    self.player_1.draw()
+                    self.p1_points_text.text = str("{:05d}".format(self.player_1.score))
+                    self.p1_points_text.draw()
+                if self.player_2:
+                    if keys[pg.K_UP] or keys[pg.K_LEFT] or keys[pg.K_DOWN] or keys[pg.K_RIGHT]:
+                        self.player_2.move(keys)
+                        self.player_2.moving = True
+                    else:
+                        self.player_2.moving = False
 
-                self.player_2.draw()
-                points_amount = str("{:05d}".format(self.player_2.score))
-                self.p2_points_text = NORMAL_FONT.render(points_amount, True, COLOR_WHITE)
-                SCREEN.blit(self.p2_points_text, points_text_rect_2)
+                    self.player_2.draw()
+                    self.p2_points_text.text = str("{:05d}".format(self.player_2.score))
+                    self.p2_points_text.draw()
 
-            # Drawing UI
-            time_left = ROUND_TIME - self.game_timer
-            self.timer_text = NORMAL_FONT.render(str(time_left), True, COLOR_WHITE)
-            SCREEN.blit(self.timer_text, timer_text_rect)
+                # Drawing UI
+                time_left = ROUND_TIME - self.game_timer
+                seconds = time_left % 60
+                minutes = int(time_left / 60) % 60
+                self.timer_text.text = f'{minutes:02}:{seconds:02}'
+                self.timer_text.draw()
 
             pg.display.flip()
 
