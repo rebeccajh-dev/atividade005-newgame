@@ -5,30 +5,53 @@ import sys
 
 pg.init()
 
+# Basic color configuration
+PLAYER_COLORS = [(120, 255, 120), (200, 120, 200)]
+COLOR_WHITE = (255, 255, 255)
+COLOR_BLACK = (0, 0, 0)
+COLOR_DAMAGED = (160, 0, 0)
+UFO_COLORS = [
+    (240, 240, 240),
+    (240, 240, 240),
+    (240, 240, 240),
+    (100, 200, 100),
+    (100, 200, 100)
+]
+
+
 # Screen & Interface configuration
 SCREEN_WIDTH = 960
 SCREEN_HEIGHT = 620
 FRAMERATE = 60
 SCREEN = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
+NORMAL_FONT = pg.font.Font("assets/retro_font.ttf", 40)
+
+timer_string = NORMAL_FONT.render("PRESSIONE QUALQUER TECLA PARA INICIAR", True, COLOR_WHITE)
+timer_text_rect = timer_string.get_rect(center=(SCREEN_WIDTH / 2, -SCREEN_HEIGHT + 100))
+
+points_string = NORMAL_FONT.render('000', True, COLOR_WHITE)
+points_text_rect = points_string.get_rect(center=(110, 100))
+
+points_string_2 = NORMAL_FONT.render('000', True, COLOR_WHITE)
+points_text_rect_2 = points_string_2.get_rect(center=(SCREEN_WIDTH - 120, 100))
+
 # Constant variables
 BASE_PLAYER_SIZE = (50, 50)
 BASE_SHIELD_X = 130
 BASE_SHIELD_Y = 20
 SHIELD_DISTANCE = 70
+ROUND_TIME = 180
 
-BASE_PLAYER_SPEED = 3
+BASE_PLAYER_SPEED = 4
 BASE_ENEMY_SPEED = 2
 MAX_BULLET_SPEED = 5
-
-PLAYER_COLORS = [(120, 255, 120), (200, 120, 200)]
-COLOR_RED = (255, 0, 0)
-UFO_COLOR = (128, 128, 128)
+RANDOM_MOVE = [-1, -0.5, 0.25, 0, 0.25, 0.5, 1]
 
 # Global variables
 background_color = (40, 20, 0)
 game_instances = [] # Made to easily track and create different interactable objects
-square_size = 50
+square_size = 25
 
 # Class for player(s) functionalities, so we can make multiple players
 # With their own properties
@@ -64,6 +87,7 @@ class Player:
         self.score = 0
         self.speed = BASE_PLAYER_SPEED
         self.shield_cooldown = 0
+        self.push_power = 15
 
         self.shield_enabled = True
         self.facing_up = False
@@ -202,11 +226,11 @@ class Bullet:
             return
 
         # Check if the player's shield is being hit
-        shield = player.shield_rect
+        shield_rect = player.shield_rect
 
-        if self.rect.colliderect(shield) and self.can_hit and player.shield_enabled:
+        if self.rect.colliderect(shield_rect) and self.can_hit and player.shield_enabled:
             # Get the relative position of the collision
-            relative_collision_x = (self.rect.centerx - shield.left) / shield.width
+            relative_collision_x = (self.rect.centerx - shield_rect.left) / shield_rect.width
             offset = (relative_collision_x - 0.5) * 2
 
             # Adjust direction depending on bullet movement
@@ -234,19 +258,35 @@ class Bullet:
             self.is_alive = False
 
 class Bandit:
-    def __init__(self, start_x, start_y):
+    def __init__(self, spawn_pos):
         self.name = 'BANDIT'
         self.live_bandit = True
-        self.rect = pg.Rect(start_x, start_y, 40, 40)  # bandit size
+        self.rect = pg.Rect(spawn_pos[0], spawn_pos[1], 40, 40)  # bandit size
         self.bullets = []
+        self.spawnpoint = [spawn_pos[2], spawn_pos[3]]
+
         self.shoot_timer = 0
         self.move_timer = 0
-        self.interval = 300 #(300 ticks is equal a 5 sec)
-        self.direction = (random.choice([-1, 1]), random.choice([-1, 1]))
+        self.base_shoot_cd = 180
+        self.shoot_cd = random.randint(self.base_shoot_cd, int(self.base_shoot_cd * 1.5))
+        self.move_cd = random.randint(180, 900)
+        self.moving_time = random.randint(30, 120)
+        self.direction = (random.choice(RANDOM_MOVE), random.choice(RANDOM_MOVE))
         self.in_screen = False
+        self.spawn_grace = True
+        self.is_moving = False
+
+        self.lifetime = 0
+        self.max_lifetime = 10
+
+        # Values to handle exponential movement (being pushed)
+        self.pushed = False
+        self.push_force = []
+        self.push_time = 0
+        self.push_cd = 25
 
     def move_bandit(self):
-        if self.live_bandit:
+        if self.live_bandit and self.is_moving and not self.pushed:
             new_x = self.rect.x + self.direction[0] * 2
             new_y = self.rect.y + self.direction[1] * 2
 
@@ -262,15 +302,41 @@ class Bandit:
     def update(self, target_position):
         self.shoot_timer += 1
 
-       # move each 5 secs
-        if self.move_timer >= self.interval:
-            self.move_bandit()
-            self.direction = (random.choice([-5, 5]), random.choice([-5, 5]))
+        # Detect if offscreen and kill instantly
+        if self.live_bandit and self.lifetime > 1:
+            offscreen = ((self.rect.x < 0 or self.rect.x > SCREEN_WIDTH)
+                        or (self.rect.y < 0 or self.rect.y > SCREEN_HEIGHT))
+
+            if offscreen:
+                self.live_bandit = False
+
+        # Initial movement to appear on screen
+        if self.lifetime <= 2 and not self.pushed and self.spawn_grace:
+            self.rect.x += (self.spawnpoint[0] - self.rect.x) * 0.05
+            self.rect.y += (self.spawnpoint[1] - self.rect.y) * 0.05
+        else:
+            self.spawn_grace = False
+
+        # move each 5 secs
+        if self.move_timer >= self.move_cd:
+            self.is_moving = True
+            self.move_cd = random.randint(180, 900)
+            self.moving_time = random.randint(30, 120)
+            self.direction = (random.choice(RANDOM_MOVE), random.choice(RANDOM_MOVE))
             self.move_timer = 0
 
-        self.shoot_timer += 1
+        if (self.move_timer <= self.moving_time
+            and self.is_moving and not self.pushed):
+            self.move_bandit()
+        elif self.is_moving:
+            self.is_moving = False
 
-        if self.shoot_timer >= 100:
+        self.shoot_timer += 1
+        self.move_timer += 1
+        self.push_check()
+
+        if self.shoot_timer >= self.shoot_cd:
+            self.shoot_cd = random.randint(self.base_shoot_cd, int(self.base_shoot_cd * 1.5))
             self.shoot(target_position)
             self.shoot_timer = 0
 
@@ -279,9 +345,10 @@ class Bandit:
         direction_x = target_position[0] - self.rect.centerx
         direction_y = target_position[1] - self.rect.centery
         magnitude = math.sqrt(direction_x**2 + direction_y**2)
+
         if magnitude != 0:
             direction = (direction_x / magnitude * 3, direction_y / magnitude * 3)  
-            bullet_position = (self.rect.centerx, self.rect.bottom)
+            bullet_position = (self.rect.centerx, self.rect.centery)
             bullet = Bullet(bullet_position, direction)
             self.bullets.append(bullet)
 
@@ -304,6 +371,42 @@ class Bandit:
             if bullet in self.bullets:
                 self.bullets.remove(bullet)
 
+    # System for pushing exponentially, used to push bandits with the player's shield
+    def push_check(self):
+        if self.pushed and self.push_time < self.push_cd:
+            self.push_time += 1
+            self.push_force[0] *= 0.9
+            self.push_force[1] *= 0.9
+
+            self.rect.x += self.push_force[0]
+            self.rect.y += self.push_force[1]
+        elif self.pushed:
+            self.push_time = 0
+            self.pushed = False
+
+    def shield_collide_check(self, player):
+        if not player:
+            return
+
+        # Check if the player's shield is being hit
+        shield_rect = player.shield_rect
+
+        if self.rect.colliderect(shield_rect) and player.shield_enabled and not self.pushed:
+            # Changed relative position calculation to handle 2 vectors
+            relative_collision = self.rect.clip(shield_rect).center
+            offset_vector = pg.math.Vector2(self.rect.center) - pg.math.Vector2(relative_collision)
+
+            # This function just make the vector values in unit (-1 to 1)
+            if offset_vector.length() != 0:
+                offset_vector.normalize_ip()
+            force_x = offset_vector.x * player.push_power
+            force_y = offset_vector.y * player.push_power
+
+            # Add pushing values
+            self.push_force = [force_x, force_y]
+            self.pushed = True
+            self.lifetime = 2
+
     def draw_bandit(self):
         pg.draw.rect(SCREEN, (255, 0, 0), self.rect) 
 
@@ -325,10 +428,11 @@ class Ufo:
 
         # check the collides by the lists
         for i in range(len(self.ufos)):
-            rect, strength = self.ufos[i]
+            rect, strength, brick_row = self.ufos[i]
 
             # Checks if the bullets collides w ufo
-            if bullet.rect.colliderect(rect) and bullet.can_hit:
+            if (bullet.rect.colliderect(rect) and bullet.can_hit
+                and self.ufos[i][1] >= 1):
                 bullet.can_hit = False
                 bullet.is_alive = False
                 self.take_damage(i)
@@ -343,8 +447,10 @@ class Ufo:
     def center_position(self):
         # Define the UFO grid as a list of lists
         ufo_grid = [
+            [1, 1, 1],
             [1, 1, 1, 1, 1],
-            [1, 1],
+            [1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1, 1],
             [1, 1, 1, 1, 1]
         ]
 
@@ -364,14 +470,14 @@ class Ufo:
             # Add UFOs for the current row
             for col_index, strength in enumerate(strengths):
                 rect = pg.Rect(x + col_index * self.width, y + row_index * self.height, self.width, self.height)
-                self.ufos.append([rect, strength])
+                self.ufos.append([rect, strength, row_index])
 
     def draw_UFO(self, surface):
         if self.live_ball:
             for brick in self.ufos:
-                rect, strength = brick
+                rect, strength, brick_row = brick
                 # change the color based in the strength
-                color = UFO_COLOR if strength > 0 else COLOR_RED
+                color = UFO_COLORS[brick_row] if strength > 0 else COLOR_DAMAGED
                 pg.draw.rect(surface, color, rect)
                 pg.draw.rect(surface, background_color, rect, 2)
                 
@@ -383,11 +489,17 @@ class Game:
             self.player_2 = None
             self.player_count = 0
             self.game_tick = 0
+            self.game_timer = 0
+
+            self.p1_points_text = points_string
+            self.p2_points_text = points_string_2
+            self.timer_text = timer_string
+
             self.ufo = Ufo()
             self.bandits = []
-            self.max_bandits = 2
-            self.left_bandits_count = 0
-            self.right_bandits_count = 0
+            self.max_bandits = 0
+            self.bandit_count = 0
+            self.bandit_spawnrate = 30
 
         def run(self):
             while True:
@@ -417,22 +529,27 @@ class Game:
                     pg.quit()
                     sys.exit()
 
-        # just for now, trying to change for the class Bandit
+        # just for now, trying to change for the class Bandita
         def bandit_position(self):
-            if self.game_tick % 300 == 0:  # add a bandit each 300 ticks
-                if self.left_bandits_count < self.max_bandits:
-                    start_x = 10
-                    start_y = random.randint(10, SCREEN_HEIGHT - 40)
-                    bandit = Bandit(start_x, start_y)
-                    self.bandits.append(bandit)
-                    self.left_bandits_count += 1
+            if (self.game_tick % self.bandit_spawnrate == 0
+                and self.bandit_count < self.max_bandits):  # add a bandit each 300 ticks
+                spawn_direction = random.choice(['left', 'right'])
+                start_pos = [0, 0, # Position that spawns at first
+                             0, 0] # Goal position to move to
 
-                if self.right_bandits_count < self.max_bandits:
-                    start_x = SCREEN_WIDTH - 50
-                    start_y = random.randint(10, SCREEN_HEIGHT - 40)
-                    bandit = Bandit(start_x, start_y)
-                    self.bandits.append(bandit)
-                    self.right_bandits_count += 1
+                if spawn_direction == 'left':
+                    start_pos[0] = -50
+                    start_pos[1] = random.randint(10, SCREEN_HEIGHT - 40)
+                    start_pos[2] = random.randint(10, 300)
+                    start_pos[3] = start_pos[1]
+                if spawn_direction == 'right':
+                    start_pos[0] = SCREEN_WIDTH
+                    start_pos[1] = random.randint(10, SCREEN_HEIGHT - 40)
+                    start_pos[2] = SCREEN_WIDTH - random.randint(50, 340)
+                    start_pos[3] = start_pos[1]
+
+                bandit = Bandit(start_pos)
+                self.bandits.append(bandit)
 
         # Merged "draw" function with game state to make bullets possible
         def update_game_state(self):
@@ -440,12 +557,21 @@ class Game:
             keys = pg.key.get_pressed()
             self.ufo.draw_UFO(SCREEN)
             self.bandit_position()
+            self.max_bandits = 3 + (2 * self.player_count)
+            self.bandit_count = len(self.bandits)
+
+            if self.game_tick % FRAMERATE == 0:
+                self.game_timer += 1
 
             for bandit in self.bandits:
                 if bandit.live_bandit:
                     bandit.update(self.ufo.rect.topleft)  # Pass ufo as target
                     bandit.update_bullets()
+                    bandit.shield_collide_check(self.player_1)
+                    bandit.shield_collide_check(self.player_2)
                     bandit.draw_bandit()
+                else:
+                    self.bandits.remove(bandit)
 
                 # collision of bullets w ufo
                 for bullet in bandit.bullets:
@@ -453,9 +579,15 @@ class Game:
                     bullet.player_collide_check(self.player_1)
                     bullet.player_collide_check(self.player_2)
                     bullet.shield_collide_check(self.player_2)
+                    if self.game_tick % FRAMERATE == 0:
+                        bullet.lifetime += 1
+
                     self.ufo.ufo_collide_check(bullet)
 
-                    # Player movement check
+                if self.game_tick % FRAMERATE == 0:
+                    bandit.lifetime += 1
+
+            # Player movement check
             if self.player_1:
                 if keys[pg.K_w] or keys[pg.K_a] or keys[pg.K_s] or keys[pg.K_d]:
                     self.player_1.move(keys)
@@ -469,32 +601,20 @@ class Game:
                 else:
                     self.player_2.moving = False
 
-            # probably we will not gonna need that
-            # # Go through all instances and check their functions and constraints
-            # for instance in game_instances[:]:
-            #     instance.update()
-            #     if self.game_tick % FRAMERATE == 0:
-            #         instance.lifetime += 1
-
-            #     # Specifying functions for certain instances using their name
-            #     if instance.name == 'BULLET':
-            #         instance.player_collide_check(self.player_1)
-            #         instance.shield_collide_check(self.player_1)
-            #         instance.player_collide_check(self.player_2)
-            #         instance.shield_collide_check(self.player_2)
-            #         self.ufo.ufo_collide_check(instance)
-
-            #     # Clearing objects if offscreen or lived too long
-            #     if ((SCREEN_WIDTH < instance.rect.x or instance.rect.x < 0) or
-            #         (SCREEN_HEIGHT < instance.rect.y or instance.rect.y < 0) or
-            #         instance.lifetime > instance.max_lifetime) or not instance.is_alive:
-            #         game_instances.remove(instance)
-
             # Drawing players if existing
             if self.player_1:
+                points_amount = str("{:05d}".format(self.player_1.score))
                 self.player_1.draw()
+                self.p1_points_text = NORMAL_FONT.render(points_amount, True, COLOR_WHITE)
             if self.player_2:
+                points_amount = str("{:05d}".format(self.player_2.score))
                 self.player_2.draw()
+                self.p2_points_text = NORMAL_FONT.render(points_amount, True, COLOR_WHITE)
+
+            # Drawing UI
+            time_left = ROUND_TIME - self.game_timer
+            self.timer_text = NORMAL_FONT.render(str(time_left), True, COLOR_WHITE)
+            SCREEN.blit(self.timer_text, timer_text_rect)
 
             pg.display.flip()
 
