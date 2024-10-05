@@ -8,6 +8,8 @@ of image resources. It centralizes asset management to keep the main code clean.
 import pygame as pg
 from config import SCREEN_WIDTH, BASE_PLAYER_SIZE, P2_TITLE_OFFSET
 
+pg.init()
+
 # Font configuration
 TEXT_FONT = pg.font.Font("assets/retro_font.ttf", 24)
 NORMAL_FONT = pg.font.Font("assets/retro_font.ttf", 40)

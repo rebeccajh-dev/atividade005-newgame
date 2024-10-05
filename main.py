@@ -116,41 +116,39 @@ class Player:
 
     # Handle controls and changing sprites (shield, eyes, etc.)
     def move(self, keys):
-        if (self.controls == 'WASD'
-            and (keys[pg.K_w] or keys[pg.K_a] or keys[pg.K_s] or keys[pg.K_d])):
-            self.moving = True
-        elif self.controls == 'WASD':
-            self.moving = False
 
-        if (self.controls == 'ARROWS'
-            and (keys[pg.K_UP] or keys[pg.K_LEFT] or keys[pg.K_DOWN] or keys[pg.K_RIGHT])):
-            self.moving = True
-        elif self.controls == 'ARROWS':
-            self.moving = False
+        # Define a dictionary that maps control types to their respective key mappings
+        key_mappings = {
+            'WASD': {
+                'left': pg.K_a,
+                'right': pg.K_d,
+                'down': pg.K_s,
+                'up': pg.K_w
+            },
+            'ARROWS': {
+                'left': pg.K_LEFT,
+                'right': pg.K_RIGHT,
+                'down': pg.K_DOWN,
+                'up': pg.K_UP
+            }
+        }
 
         # Checking different keys depending on the current player controls
         self.rect.topleft = (self.rect.x, self.rect.y)
 
-        # TODO: Refactor duplicate code
-        if self.controls == 'WASD':
-            if keys[pg.K_a]:
+        # Check if the control type is valid
+        if self.controls in key_mappings:
+            controls = key_mappings[self.controls]
+
+            # Directional key checks based on control type
+            if keys[controls['left']]:
                 self.change_direction('left')
-            elif keys[pg.K_d]:
+            elif keys[controls['right']]:
                 self.change_direction('right')
-            if keys[pg.K_s]:
+
+            if keys[controls['down']]:
                 self.change_direction('down')
-            elif keys[pg.K_w]:
-                self.change_direction('up')
-            else:
-                self.facing_up = False
-        elif self.controls == 'ARROWS':
-            if keys[pg.K_LEFT]:
-                self.change_direction('left')
-            elif keys[pg.K_RIGHT]:
-                self.change_direction('right')
-            if keys[pg.K_DOWN]:
-                self.change_direction('down')
-            elif keys[pg.K_UP]:
+            elif keys[controls['up']]:
                 self.change_direction('up')
             else:
                 self.facing_up = False
