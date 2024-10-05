@@ -1,3 +1,11 @@
+"""
+Main module for the game.
+
+This module handles the initialization of the game loop and the rendering process.
+It uses configurations from `config.py` and assets loaded by `assets.py` to create
+the game window, handle events, and display the game graphics.
+"""
+
 import math
 import random
 import sys
@@ -14,8 +22,11 @@ from config import SCREEN_WIDTH, SCREEN_HEIGHT, BASE_PLAYER_SIZE, BASE_SHIELD_X,
 pg.init()
 
 
-# Class for player(s) functionalities, so we can make multiple players
-# With their own properties
+"""
+Class for player(s) functionalities, so we can make multiple players
+with their own properties.
+"""
+#
 class Player:
     def __init__(self, choosen_controls, player_count, color):
         self.controls = choosen_controls
@@ -56,8 +67,10 @@ class Player:
         self.last_key = ''
         self.eyes_offset = [0, 0]
 
-    # Handle player behaviour depending on direction given
-    # The self.last_key conditions allows the shield to not break on diagonal movement
+        """
+            Handle player behaviour depending on direction given
+            The self.last_key conditions allows the shield to not break on diagonal movement
+        """
     def change_direction(self, direction):
         if direction == 'left':
             self.rect.x -= self.speed
@@ -176,8 +189,10 @@ class Player:
             self.eyes.set_alpha(128)
             self.sprite.set_alpha(128)
 
-# Class for spawning bullets and handling their behaviour,
-# They have a position to be spawned at and a direction to constantly go
+"""
+Class for spawning bullets and handling their behaviour,
+they have a position to be spawned at and a direction to constantly go.
+"""
 class Bullet:
     def __init__(self, position, direction):
         self.name = 'BULLET'
@@ -400,7 +415,9 @@ class Bandit:
     def draw_bandit(self):
         SCREEN.blit(self.sprite, self.rect)
 
-#Draw UFO
+"""
+Class responsible for drawing the UFO's
+"""
 class Ufo:
     def __init__(self):
         self.live_ball = True
@@ -497,7 +514,9 @@ class Terrain:
         SCREEN.blit(self.sprite, self.rect)
 
 
-# Class made to handle managing text and applying effects or changes
+"""
+Class made to handle managing text and applying effects or changes
+"""
 class Text:
     def __init__(self, text, rect, size, base_color=(255, 255, 255), blink_cd=15, blink_color=(255, 255, 200)):
         self.text = text
@@ -544,6 +563,9 @@ class Text:
 
             SCREEN.blit(render_text, render_rect)
 
+"""
+Class that initializes the main logic of the game and handles events.
+"""
 class Game:
         def __init__(self):
             self.on_menu = True

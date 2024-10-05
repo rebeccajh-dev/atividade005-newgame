@@ -1,3 +1,10 @@
+"""
+Module for loading and configuring game assets.
+
+This module handles the initialization of fonts and the loading and transformation
+of image resources. It centralizes asset management to keep the main code clean.
+"""
+
 import pygame as pg
 from config import SCREEN_WIDTH, BASE_PLAYER_SIZE, P2_TITLE_OFFSET
 

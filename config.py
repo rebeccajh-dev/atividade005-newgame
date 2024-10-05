@@ -1,3 +1,10 @@
+"""
+Module for storing configuration constants and settings for the game.
+
+This module contains variables related to screen configuration, color settings,
+game constants, and interface-related configurations.
+"""
+
 import pygame as pg
 
 # Screen configuration
