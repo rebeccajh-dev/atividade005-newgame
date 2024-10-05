@@ -1,7 +1,10 @@
+import pygame as pg
+
 # Screen configuration
 SCREEN_WIDTH = 960
 SCREEN_HEIGHT = 620
 FRAMERATE = 60
+SCREEN = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
 # Basic color configuration
 PLAYER_COLORS = [(120, 255, 120), (200, 120, 200)]
@@ -39,3 +42,8 @@ RANDOM_MOVE = [-1, -0.5, 0.25, 0, 0.25, 0.5, 1]
 
 # Interface configuration
 P2_TITLE_OFFSET = 15
+
+# Global variables
+MENU_COLOR = (10, 10, 30)
+BACKGROUND_COLOR = (40, 20, 0)
+SQUARE_SIZE = 25

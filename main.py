@@ -1,91 +1,18 @@
 import math
-import pygame as pg
 import random
 import sys
 
+import pygame as pg
+
+from assets import TITLE_SPRITE, TITLE_SPRITE_RECT, TITLE_SPRITE_EYES, TITLE_SPRITE_EYES_RECT, UFO_SPRITE_RECT, \
+    UFO_SPRITE, TITLE_SPRITE_RECT2, UFO_SPRITE_RECT2, TITLE_SPRITE_EYES_RECT2, TITLE_SPRITE2, TITLE_SPRITE_EYES2, \
+    UFO_SPRITE2, TEXT_FONT, NORMAL_FONT, TITLE_FONT
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, BASE_PLAYER_SIZE, BASE_SHIELD_X, BASE_SHIELD_Y, BASE_PLAYER_SPEED, \
+    SHIELD_DISTANCE, FRAMERATE, MAX_BULLET_SPEED, RANDOM_MOVE, SQUARE_SIZE, UFO_COLORS, COLOR_DAMAGED, BACKGROUND_COLOR, \
+    TERRAIN_COLORS, COLOR_WHITE, COLOR_RED, PLAYER_COLORS, MENU_COLOR, ROUND_TIME, SCREEN
+
 pg.init()
 
-# Screen configuration
-SCREEN_WIDTH = 960
-SCREEN_HEIGHT = 620
-FRAMERATE = 60
-SCREEN = pg.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-
-# Basic color configuration
-PLAYER_COLORS = [(120, 255, 120), (200, 120, 200)]
-COLOR_WHITE = (255, 255, 255)
-COLOR_BLACK = (0, 0, 0)
-COLOR_RED = (255, 0, 0)
-COLOR_DAMAGED = (160, 0, 0)
-UFO_COLORS = [
-    (240, 240, 240),
-    (240, 240, 240),
-    (240, 240, 240),
-    (100, 200, 100),
-    (100, 200, 100)
-]
-
-TERRAIN_COLORS = [
-    (0, 0, 0),
-    (40, 110, 60),
-    (40, 110, 60),
-    (80, 60, 40),
-    (80, 60, 40)
-]
-
-# Constant variables
-BASE_PLAYER_SIZE = (50, 50)
-BASE_SHIELD_X = 130
-BASE_SHIELD_Y = 20
-SHIELD_DISTANCE = 70
-ROUND_TIME = 180
-
-BASE_PLAYER_SPEED = 4
-BASE_ENEMY_SPEED = 2
-MAX_BULLET_SPEED = 5
-RANDOM_MOVE = [-1, -0.5, 0.25, 0, 0.25, 0.5, 1]
-
-# Interface configuration
-P2_TITLE_OFFSET = 15
-
-TEXT_FONT = pg.font.Font("assets/retro_font.ttf", 24)
-NORMAL_FONT = pg.font.Font("assets/retro_font.ttf", 40)
-TITLE_FONT = pg.font.Font("assets/retro_font.ttf", 72)
-
-TITLE_SPRITE = pg.image.load(f'assets/player_sprites/1/body.png')
-TITLE_SPRITE = pg.transform.scale(TITLE_SPRITE, BASE_PLAYER_SIZE)
-TITLE_SPRITE_RECT = TITLE_SPRITE.get_rect()
-TITLE_SPRITE_RECT.center = (SCREEN_WIDTH // 2, 440)
-
-TITLE_SPRITE2 = pg.image.load(f'assets/player_sprites/2/body.png')
-TITLE_SPRITE2 = pg.transform.scale(TITLE_SPRITE2, BASE_PLAYER_SIZE)
-TITLE_SPRITE_RECT2 = TITLE_SPRITE2.get_rect()
-TITLE_SPRITE_RECT2.center = (SCREEN_WIDTH // 2, 440 + P2_TITLE_OFFSET)
-
-TITLE_SPRITE_EYES = pg.image.load(f'assets/player_sprites/1/eyes.png')
-TITLE_SPRITE_EYES = pg.transform.scale(TITLE_SPRITE_EYES, BASE_PLAYER_SIZE)
-TITLE_SPRITE_EYES_RECT = TITLE_SPRITE_EYES.get_rect()
-TITLE_SPRITE_EYES_RECT.center = ((SCREEN_WIDTH // 2) - 4, 440)
-
-TITLE_SPRITE_EYES2 = pg.image.load(f'assets/player_sprites/1/eyes.png')
-TITLE_SPRITE_EYES2 = pg.transform.scale(TITLE_SPRITE_EYES2, BASE_PLAYER_SIZE)
-TITLE_SPRITE_EYES_RECT2 = TITLE_SPRITE_EYES2.get_rect()
-TITLE_SPRITE_EYES_RECT2.center = ((SCREEN_WIDTH // 2) - 4, 440 + P2_TITLE_OFFSET)
-
-UFO_SPRITE = pg.image.load(f'assets/UFO.png')
-UFO_SPRITE = pg.transform.scale(UFO_SPRITE, (150, 150))
-UFO_SPRITE_RECT = UFO_SPRITE.get_rect()
-UFO_SPRITE_RECT.center = (SCREEN_WIDTH / 2, 420)
-
-UFO_SPRITE2 = pg.image.load(f'assets/UFO2.png')
-UFO_SPRITE2 = pg.transform.scale(UFO_SPRITE2, (150, 150))
-UFO_SPRITE_RECT2 = UFO_SPRITE2.get_rect()
-UFO_SPRITE_RECT2.center = (SCREEN_WIDTH / 2, 420 + P2_TITLE_OFFSET)
-
-# Global variables
-menu_color = (10, 10, 30)
-background_color = (40, 20, 0)
-square_size = 25
 
 # Class for player(s) functionalities, so we can make multiple players
 # With their own properties
@@ -191,6 +118,7 @@ class Player:
         # Checking different keys depending on the current player controls
         self.rect.topleft = (self.rect.x, self.rect.y)
 
+        # TODO: Refactor duplicate code
         if self.controls == 'WASD':
             if keys[pg.K_a]:
                 self.change_direction('left')
@@ -477,9 +405,9 @@ class Ufo:
     def __init__(self):
         self.live_ball = True
         self.fully_broken = False
-        self.width = square_size
-        self.height = square_size
-        self.size = square_size
+        self.width = SQUARE_SIZE
+        self.height = SQUARE_SIZE
+        self.size = SQUARE_SIZE
         self.ufos = []
         self.center_position()
         self.rect = pg.Rect(SCREEN_WIDTH // 2 - self.size // 2, SCREEN_HEIGHT // 2 - self.size // 2, self.size,
@@ -544,14 +472,14 @@ class Ufo:
                 rect = pg.Rect(x + col_index * self.width, y + row_index * self.height, self.width, self.height)
                 self.ufos.append([rect, strength, row_index])
 
-    def draw_UFO(self, surface):
+    def draw_ufo(self, surface):
         if self.live_ball:
             for brick in self.ufos:
                 rect, strength, brick_row = brick
                 # change the color based in the strength
                 color = UFO_COLORS[brick_row] if strength > 0 else COLOR_DAMAGED
                 pg.draw.rect(surface, color, rect)
-                pg.draw.rect(surface, background_color, rect, 2)
+                pg.draw.rect(surface, BACKGROUND_COLOR, rect, 2)
 
 
 class Terrain:
@@ -769,7 +697,7 @@ class Game:
             keys = pg.key.get_pressed()
 
             if self.on_menu:
-                SCREEN.fill(menu_color)
+                SCREEN.fill(MENU_COLOR)
                 self.title_text.draw()
                 self.start_text.draw()
                 self.choose_text.draw()
@@ -814,12 +742,12 @@ class Game:
                         UFO_SPRITE_RECT2.y -= 15
                         self.menu_loop[1] = True
             else:
-                SCREEN.fill(background_color)
+                SCREEN.fill(BACKGROUND_COLOR)
 
                 for terrain in self.terrain:
                     terrain.draw()
 
-                self.ufo.draw_UFO(SCREEN)
+                self.ufo.draw_ufo(SCREEN)
 
                 if self.ufo.fully_broken:
                     self.on_menu = True
