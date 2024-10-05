@@ -46,6 +46,8 @@ MAX_BULLET_SPEED = 5
 RANDOM_MOVE = [-1, -0.5, 0.25, 0, 0.25, 0.5, 1]
 
 # Interface configuration
+P2_TITLE_OFFSET = 15
+
 TEXT_FONT = pg.font.Font("assets/retro_font.ttf", 24)
 NORMAL_FONT = pg.font.Font("assets/retro_font.ttf", 40)
 TITLE_FONT = pg.font.Font("assets/retro_font.ttf", 72)
@@ -55,10 +57,30 @@ TITLE_SPRITE = pg.transform.scale(TITLE_SPRITE, BASE_PLAYER_SIZE)
 TITLE_SPRITE_RECT = TITLE_SPRITE.get_rect()
 TITLE_SPRITE_RECT.center = (SCREEN_WIDTH // 2, 440)
 
+TITLE_SPRITE2 = pg.image.load(f'assets/player_sprites/2/body.png')
+TITLE_SPRITE2 = pg.transform.scale(TITLE_SPRITE2, BASE_PLAYER_SIZE)
+TITLE_SPRITE_RECT2 = TITLE_SPRITE2.get_rect()
+TITLE_SPRITE_RECT2.center = (SCREEN_WIDTH // 2, 440 + P2_TITLE_OFFSET)
+
 TITLE_SPRITE_EYES = pg.image.load(f'assets/player_sprites/1/eyes.png')
 TITLE_SPRITE_EYES = pg.transform.scale(TITLE_SPRITE_EYES, BASE_PLAYER_SIZE)
 TITLE_SPRITE_EYES_RECT = TITLE_SPRITE_EYES.get_rect()
 TITLE_SPRITE_EYES_RECT.center = ((SCREEN_WIDTH // 2) - 4, 440)
+
+TITLE_SPRITE_EYES2 = pg.image.load(f'assets/player_sprites/1/eyes.png')
+TITLE_SPRITE_EYES2 = pg.transform.scale(TITLE_SPRITE_EYES2, BASE_PLAYER_SIZE)
+TITLE_SPRITE_EYES_RECT2 = TITLE_SPRITE_EYES2.get_rect()
+TITLE_SPRITE_EYES_RECT2.center = ((SCREEN_WIDTH // 2) - 4, 440 + P2_TITLE_OFFSET)
+
+UFO_SPRITE = pg.image.load(f'assets/UFO.png')
+UFO_SPRITE = pg.transform.scale(UFO_SPRITE, (150, 150))
+UFO_SPRITE_RECT = UFO_SPRITE.get_rect()
+UFO_SPRITE_RECT.center = (SCREEN_WIDTH / 2, 420)
+
+UFO_SPRITE2 = pg.image.load(f'assets/UFO2.png')
+UFO_SPRITE2 = pg.transform.scale(UFO_SPRITE2, (150, 150))
+UFO_SPRITE_RECT2 = UFO_SPRITE2.get_rect()
+UFO_SPRITE_RECT2.center = (SCREEN_WIDTH / 2, 420 + P2_TITLE_OFFSET)
 
 # Global variables
 menu_color = (10, 10, 30)
@@ -154,6 +176,18 @@ class Player:
 
     # Handle controls and changing sprites (shield, eyes, etc.)
     def move(self, keys):
+        if (self.controls == 'WASD'
+            and (keys[pg.K_w] or keys[pg.K_a] or keys[pg.K_s] or keys[pg.K_d])):
+            self.moving = True
+        elif self.controls == 'WASD':
+            self.moving = False
+
+        if (self.controls == 'ARROWS'
+            and (keys[pg.K_UP] or keys[pg.K_LEFT] or keys[pg.K_DOWN] or keys[pg.K_RIGHT])):
+            self.moving = True
+        elif self.controls == 'ARROWS':
+            self.moving = False
+
         # Checking different keys depending on the current player controls
         self.rect.topleft = (self.rect.x, self.rect.y)
 
@@ -555,28 +589,31 @@ class Text:
 
     def blink_text(self):
         if self.enabled and self.blink:
-            if self.blink_tick >= self.blink_cd == 0 and self.visible:
+            if self.blink_tick >= self.blink_cd and self.visible:
                 self.visible = False
-            elif self.blink_tick >= self.blink_cd * 2:
+                self.blink_tick = 0
+            elif self.blink_tick >= self.blink_cd and not self.visible:
                 self.visible = True
                 self.blink_tick = 0
 
     def blink_text_color(self):
         if self.enabled and self.color_blink:
-            if self.blink_tick >= self.blink_cd == 0 and self.visible:
+            if self.blink_tick >= self.blink_cd and self.current_color != self.blink_color:
                 self.current_color = self.blink_color
-            elif self.blink_tick >= self.blink_cd * 2:
+                self.blink_tick = 0
+            elif self.blink_tick >= self.blink_cd and self.current_color != self.base_color:
                 self.current_color = self.base_color
                 self.blink_tick = 0
 
     def draw(self):
-        if self.enabled and self.visible:
-            self.blink_tick += 1
-            self.blink_text()
-            self.blink_text_color()
+        self.blink_tick += 1
+        self.blink_text()
+        self.blink_text_color()
 
-            render_text = self.size.render(self.text, True, self.base_color)
+        if self.enabled and self.visible:
+            render_text = self.size.render(self.text, True, self.current_color)
             render_rect = render_text.get_rect(center=self.rect)
+
             SCREEN.blit(render_text, render_rect)
 
 class Game:
@@ -593,7 +630,9 @@ class Game:
 
             # Creating text as class objects
             self.title_text = Text('< WESTERN RAID >', (SCREEN_WIDTH / 2, 100), TITLE_FONT)
-            self.start_text = Text('press WASD/ARROW keys to start',
+            self.choose_text = Text('WASD / ARROW keys to select character',
+                                   (SCREEN_WIDTH / 2, 580), TEXT_FONT, (120, 200, 255), 30)
+            self.start_text = Text('PRESS ENTER TO START',
                                    (SCREEN_WIDTH / 2, 300), TEXT_FONT, COLOR_WHITE, 30)
 
             self.p1_points_text = Text('00000', (90, 30), NORMAL_FONT)
@@ -603,13 +642,21 @@ class Game:
             self.ambush_text = Text('!! AMBUSH INCOMING !!', (SCREEN_WIDTH / 2, 80), TEXT_FONT,
                                     COLOR_RED, 15)
 
+            self.select_error = Text('SELECT A PLAYER', (SCREEN_WIDTH / 2, SCREEN_HEIGHT - 80),
+                                    TEXT_FONT, COLOR_RED, 8, (200, 100, 0))
+
+            self.select_error.enabled = False
             self.start_text.blink = True
+            self.select_error.color_blink = True
+
             self.ufo = Ufo()
             self.bandits = []
             self.terrain = []
             self.max_bandits = 0
             self.bandit_count = 0
             self.bandit_spawnrate = 120
+            self.menu_loop = [60, False]
+            self.start_animate = True
 
             self.draw_map()
 
@@ -658,7 +705,7 @@ class Game:
                 self.update_game_state()
                 self.handle_events()
                 self.clock.tick(FRAMERATE)
-                self.game_tick = pg.time.get_ticks()  # Save the game time in milliseconds
+                self.game_tick += 1
 
         def handle_events(self):
             keys = pg.key.get_pressed()
@@ -666,15 +713,28 @@ class Game:
             # Detecting player joining the game
             if keys[pg.K_w] or keys[pg.K_a] or keys[pg.K_s] or keys[pg.K_d]:
                 if not self.player_1:
-                    self.on_menu = False
                     color = PLAYER_COLORS[self.player_count]
                     self.player_count += 1
                     self.player_1 = Player('WASD', self.player_count, color)
+                elif not self.player_2 and self.player_1.controls != 'WASD':
+                    color = PLAYER_COLORS[self.player_count]
+                    self.player_count += 1
+                    self.player_2 = Player('WASD', self.player_count, color)
             if keys[pg.K_UP] or keys[pg.K_LEFT] or keys[pg.K_DOWN] or keys[pg.K_RIGHT]:
-                if not self.player_2:
+                if not self.player_1:
+                    color = PLAYER_COLORS[self.player_count]
+                    self.player_count += 1
+                    self.player_1 = Player('ARROWS', self.player_count, color)
+                elif not self.player_2 and self.player_1.controls != 'ARROWS':
                     color = PLAYER_COLORS[self.player_count]
                     self.player_count += 1
                     self.player_2 = Player('ARROWS', self.player_count, color)
+
+            if keys[pg.K_RETURN] and self.on_menu:
+                if self.player_1:
+                    self.on_menu = False
+                else:
+                    self.select_error.enabled = True
 
             for event in pg.event.get():
                 # Quit the game
@@ -712,8 +772,47 @@ class Game:
                 SCREEN.fill(menu_color)
                 self.title_text.draw()
                 self.start_text.draw()
-                SCREEN.blit(TITLE_SPRITE, TITLE_SPRITE_RECT)
-                SCREEN.blit(TITLE_SPRITE_EYES, TITLE_SPRITE_EYES_RECT)
+                self.choose_text.draw()
+
+                # Draw characters on screen depending on players joined
+                if self.player_1:
+                    self.select_error.enabled = False
+                    SCREEN.blit(TITLE_SPRITE, TITLE_SPRITE_RECT)
+                    SCREEN.blit(TITLE_SPRITE_EYES, TITLE_SPRITE_EYES_RECT)
+                    SCREEN.blit(UFO_SPRITE, UFO_SPRITE_RECT)
+                if self.player_2:
+                    # Apply position offset
+                    offset1 = 100
+                    offset2 = -100
+                    TITLE_SPRITE_RECT.centerx = SCREEN_WIDTH / 2 - offset1
+                    UFO_SPRITE_RECT.centerx = SCREEN_WIDTH / 2 - offset1
+                    TITLE_SPRITE_EYES_RECT.centerx = (SCREEN_WIDTH / 2) - 4 - offset1
+
+                    TITLE_SPRITE_RECT2.centerx = SCREEN_WIDTH / 2 - offset2
+                    UFO_SPRITE_RECT2.centerx = SCREEN_WIDTH / 2 - offset2
+                    TITLE_SPRITE_EYES_RECT2.centerx = (SCREEN_WIDTH / 2) - 4 - offset2
+
+                    SCREEN.blit(TITLE_SPRITE2, TITLE_SPRITE_RECT2)
+                    SCREEN.blit(TITLE_SPRITE_EYES2, TITLE_SPRITE_EYES_RECT2)
+                    SCREEN.blit(UFO_SPRITE2, UFO_SPRITE_RECT2)
+
+                if self.game_tick % self.menu_loop[0] == 0:
+                    if self.menu_loop[1]:
+                        TITLE_SPRITE_RECT.y -= 15
+                        TITLE_SPRITE_EYES_RECT.y -= 15
+                        UFO_SPRITE_RECT.y -= 15
+                        TITLE_SPRITE_RECT2.y += 15
+                        TITLE_SPRITE_EYES_RECT2.y += 15
+                        UFO_SPRITE_RECT2.y += 15
+                        self.menu_loop[1] = False
+                    else:
+                        TITLE_SPRITE_RECT.y += 15
+                        TITLE_SPRITE_EYES_RECT.y += 15
+                        UFO_SPRITE_RECT.y += 15
+                        TITLE_SPRITE_RECT2.y -= 15
+                        TITLE_SPRITE_EYES_RECT2.y -= 15
+                        UFO_SPRITE_RECT2.y -= 15
+                        self.menu_loop[1] = True
             else:
                 SCREEN.fill(background_color)
 
@@ -728,6 +827,8 @@ class Game:
                     self.bandits = []
                     self.player_1 = None
                     self.player_2 = None
+                    self.player_count = 0
+                    self.game_tick = 0
                     return
 
                 self.bandit_position()
@@ -764,22 +865,12 @@ class Game:
 
                 # Player movement check and drawing
                 if self.player_1:
-                    if keys[pg.K_w] or keys[pg.K_a] or keys[pg.K_s] or keys[pg.K_d]:
-                        self.player_1.move(keys)
-                        self.player_1.moving = True
-                    else:
-                        self.player_1.moving = False
-
+                    self.player_1.move(keys)
                     self.player_1.draw()
                     self.p1_points_text.text = str("{:05d}".format(self.player_1.score))
                     self.p1_points_text.draw()
                 if self.player_2:
-                    if keys[pg.K_UP] or keys[pg.K_LEFT] or keys[pg.K_DOWN] or keys[pg.K_RIGHT]:
-                        self.player_2.move(keys)
-                        self.player_2.moving = True
-                    else:
-                        self.player_2.moving = False
-
+                    self.player_2.move(keys)
                     self.player_2.draw()
                     self.p2_points_text.text = str("{:05d}".format(self.player_2.score))
                     self.p2_points_text.draw()
@@ -790,6 +881,9 @@ class Game:
                 minutes = int(time_left / 60) % 60
                 self.timer_text.text = f'{minutes:02}:{seconds:02}'
                 self.timer_text.draw()
+
+            if self.select_error.enabled:
+                self.select_error.draw()
 
             pg.display.flip()
 
