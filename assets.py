@@ -1,5 +1,5 @@
 """
-Module for loading and configuring game assets.
+Module for loading and configuring components assets.
 
 This module handles the initialization of fonts and the loading and transformation
 of image resources. It centralizes asset management to keep the main code clean.
