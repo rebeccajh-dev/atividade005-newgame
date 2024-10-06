@@ -80,6 +80,14 @@ class Ufo:
             for brick in self.ufos:
                 rect, strength, brick_row = brick
                 # change the color based in the strength
-                color = UFO_COLORS[brick_row] if strength > 0 else COLOR_DAMAGED
+                if strength <= 0:
+                    color = COLOR_DAMAGED
+                elif strength == 1:
+                    color = UFO_COLORS[0][brick_row]
+                elif strength == 2:
+                    color = UFO_COLORS[1][brick_row]
+                else:
+                    color = UFO_COLORS[2][brick_row]
+
                 pg.draw.rect(surface, color, rect)
                 pg.draw.rect(surface, BACKGROUND_COLOR, rect, 2)

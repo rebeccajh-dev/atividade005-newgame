@@ -1,6 +1,7 @@
 """
 Class that initializes the main logic of the components and handles events.
 """
+import random
 from random import randint, choice
 from assets import TITLE_FONT, TEXT_FONT, NORMAL_FONT, TITLE_SPRITE, TITLE_SPRITE_RECT, TITLE_SPRITE_EYES, UFO_SPRITE, \
     TITLE_SPRITE_EYES_RECT, UFO_SPRITE_RECT, TITLE_SPRITE_RECT2, UFO_SPRITE_RECT2, TITLE_SPRITE_EYES_RECT2, \
@@ -10,8 +11,9 @@ from components.player import Player
 from components.terrain import Terrain
 from components.text import Text
 from components.ufo import Ufo
+from components.objects import Objects
 from config import SCREEN_WIDTH, COLOR_WHITE, COLOR_RED, SCREEN_HEIGHT, FRAMERATE, PLAYER_COLORS, MENU_COLOR, SCREEN, \
-    BACKGROUND_COLOR, ROUND_TIME
+    BACKGROUND_COLOR
 
 import pygame as pg
 import sys
@@ -26,6 +28,8 @@ class Game:
             self.player_count = 0
             self.game_tick = 0
             self.game_timer = 0
+            self.full_score = 0
+            self.round_time = 15
             self.difficulty_time = 15   # Time in seconds of when difficulty increases
             self.ambush_time = randint(80, 100)   # Time in seconds of when ambush mode activates
 
@@ -35,6 +39,10 @@ class Game:
                                    (SCREEN_WIDTH / 2, 580), TEXT_FONT, (120, 200, 255), 30)
             self.start_text = Text('PRESS ENTER TO START',
                                    (SCREEN_WIDTH / 2, 300), TEXT_FONT, COLOR_WHITE, 30)
+
+            self.full_score_text = Text('SCORE: 0000000', (SCREEN_WIDTH / 2, 180), NORMAL_FONT)
+            self.new_best_text = Text('NEW BEST!', (SCREEN_WIDTH / 2, 220),
+                                    TEXT_FONT, (250, 230, 100), 10, (150, 255, 100))
 
             self.p1_points_text = Text('00000', (90, 30), NORMAL_FONT)
             self.p2_points_text = Text('00000', (SCREEN_WIDTH - 90, 30), NORMAL_FONT)
@@ -46,11 +54,15 @@ class Game:
             self.select_error = Text('SELECT A PLAYER', (SCREEN_WIDTH / 2, SCREEN_HEIGHT - 80),
                                     TEXT_FONT, COLOR_RED, 8, (200, 100, 0))
 
+            self.new_best_text.enabled = False
             self.select_error.enabled = False
             self.start_text.blink = True
+            self.new_best_text.color_blink = True
             self.select_error.color_blink = True
 
             self.ufo = Ufo()
+            self.objects = []
+            self.bullets = []
             self.bandits = []
             self.terrain = []
             self.max_bandits = 0
@@ -62,7 +74,6 @@ class Game:
             self.draw_map()
 
         def draw_map(self):
-            self.ufo = Ufo()
             self.terrain = []
 
             # Grid used to spawn terrain, 1 allows spawning and 0 makes it empty
@@ -83,15 +94,26 @@ class Game:
                 [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             ]
             terrain_counter = 1
+            terrain_type = randint(1, 2)
+            ter1_sprites = [1, 2, 3, 4, 5]
+            ter2_sprites = [3, 4, 5, 6, 7, 8]
 
             for row_index, row in enumerate(terrain_grid):
                 for col_index, column in enumerate(row):
                     terrain_counter += 1
 
                     if column != 0 and terrain_counter % randint(1, 12) == 0:
-                        random_index = randint(1, 4)
+                        large_sprites = [3, 7, 8]   # Index for large sprites in the terrain sprites folder
+                        random_index = 1
 
-                        if random_index != 3:  # Condition for larger sprites
+                        if terrain_type == 1:
+                            random_index = random.choice(ter1_sprites)
+                        elif terrain_type == 2:
+                            random_index = random.choice(ter2_sprites)
+
+                        if randint(1, 777) == 1: random_index = 99  # Rare snake sprite for flavor
+
+                        if not large_sprites.count(random_index) != 0:  # Condition for larger sprites
                             terrain_size = 70
                         else:
                             terrain_size = 140
@@ -165,6 +187,28 @@ class Game:
                 bandit = Bandit(start_pos)
                 self.bandits.append(bandit)
 
+        def game_reset(self):
+            new_best = 0
+            if self.player_1: new_best += self.player_1.score
+            if self.player_2: new_best += self.player_2.score
+
+            if self.full_score < new_best:
+                self.full_score = new_best
+                self.new_best_text.enabled = True
+            else:
+                self.new_best_text.enabled = False
+
+            self.on_menu = True
+            self.game_timer = 0
+            self.ufo = Ufo()
+            self.bandits = []
+            self.bullets = []
+            self.objects = []
+            self.player_1 = None
+            self.player_2 = None
+            self.player_count = 0
+            self.game_tick = 0
+
         # Merged "draw" function with components state to make bullets possible
         def update_game_state(self):
             keys = pg.key.get_pressed()
@@ -174,6 +218,9 @@ class Game:
                 self.title_text.draw()
                 self.start_text.draw()
                 self.choose_text.draw()
+                self.full_score_text.text = str("SCORE: {:07d}".format(self.full_score))
+                self.full_score_text.draw()
+                self.new_best_text.draw()
 
                 # Draw characters on screen depending on players joined
                 if self.player_1:
@@ -222,16 +269,7 @@ class Game:
 
                 self.ufo.draw_ufo(SCREEN)
 
-                if self.ufo.fully_broken:
-                    self.on_menu = True
-                    self.game_timer = 0
-                    self.bandits = []
-                    self.player_1 = None
-                    self.player_2 = None
-                    self.player_count = 0
-                    self.game_tick = 0
-                    return
-
+                # Creating a random bandit
                 self.bandit_position()
                 self.max_bandits = 2 + (2 * self.player_count)
                 self.bandit_spawnrate = int(120 - (15 * self.player_count))
@@ -240,18 +278,44 @@ class Game:
                 if self.game_tick % FRAMERATE == 0:
                     self.game_timer += 1
 
+                for item in self.objects:
+                    if not item.collected and item.lifetime <= item.despawn_time:
+                        item.update()
+                        item.check_collect(self.player_1, self.ufo)
+                        item.check_collect(self.player_2, self.ufo)
+                        item.draw()
+
+                        if self.game_tick % FRAMERATE == 0:
+                            item.lifetime += 1
+                    else:
+                        self.objects.remove(item)
+
                 for bandit in self.bandits:
                     if bandit.live_bandit:
-                        bandit.update(self.ufo.rect.topleft)  # Pass ufo as target
-                        bandit.update_bullets()
+                        # Getting a random brick as a target
+                        # Allowing broken bricks is by design, or else it would be too unfair
+                        target = self.ufo.ufos[randint(0, len(self.ufo.ufos) - 1)][0].topleft
+
+                        bandit.update(target, self.bullets)
+                        possible_loot = bandit.update_bullets(self.bullets)
+
+                        if possible_loot:
+                            new_item = Objects(possible_loot, bandit.rect)
+                            self.objects.append(new_item)
+
                         bandit.shield_collide_check(self.player_1)
                         bandit.shield_collide_check(self.player_2)
                         bandit.draw_bandit()
                     else:
                         self.bandits.remove(bandit)
 
-                    # collision of bullets w ufo
-                    for bullet in bandit.bullets:
+                    if self.game_tick % FRAMERATE == 0:
+                        bandit.lifetime += 1
+
+                # collision of bullets w ufo
+                for bullet in self.bullets:
+                    if bullet.is_alive:
+                        bullet.update()
                         bullet.shield_collide_check(self.player_1)  # collision w shield player 1
                         bullet.player_collide_check(self.player_1)
                         bullet.player_collide_check(self.player_2)
@@ -260,28 +324,33 @@ class Game:
                             bullet.lifetime += 1
 
                         self.ufo.ufo_collide_check(bullet)
-
-                    if self.game_tick % FRAMERATE == 0:
-                        bandit.lifetime += 1
+                    else:
+                        self.bullets.remove(bullet)
 
                 # Player movement check and drawing
                 if self.player_1:
-                    self.player_1.move(keys)
+                    self.player_1.move(keys, self.bullets)
                     self.player_1.draw()
                     self.p1_points_text.text = str("{:05d}".format(self.player_1.score))
                     self.p1_points_text.draw()
                 if self.player_2:
-                    self.player_2.move(keys)
+                    self.player_2.move(keys, self.bullets)
                     self.player_2.draw()
                     self.p2_points_text.text = str("{:05d}".format(self.player_2.score))
                     self.p2_points_text.draw()
 
                 # Drawing UI
-                time_left = ROUND_TIME - self.game_timer
+                time_left = self.round_time - self.game_timer
                 seconds = time_left % 60
                 minutes = int(time_left / 60) % 60
                 self.timer_text.text = f'{minutes:02}:{seconds:02}'
                 self.timer_text.draw()
+
+                # Defeat if ufo is broken, should show a defeat screen with final score
+                if self.ufo.fully_broken:
+                    self.game_reset()
+                elif time_left == 0:
+                    self.game_reset()
 
             if self.select_error.enabled:
                 self.select_error.draw()

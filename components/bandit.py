@@ -1,3 +1,4 @@
+import random
 from random import randint, choice
 from components.bullet import Bullet
 from config import RANDOM_MOVE, SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN
@@ -17,9 +18,11 @@ class Bandit:
         self.rect.x = spawn_pos[0]
         self.rect.y = spawn_pos[1]
 
+        self.item_drop = None
         self.live_bandit = True
-        self.bullets = []
         self.spawnpoint = [spawn_pos[2], spawn_pos[3]]
+        self.item_chance = 50
+        self.powerup_chance = 50
 
         self.shoot_timer = 0
         self.move_timer = 0
@@ -33,7 +36,7 @@ class Bandit:
         self.is_moving = False
 
         self.lifetime = 0
-        self.max_lifetime = 10
+        self.max_lifetime = 20
 
         # Values to handle exponential movement (being pushed)
         self.pushed = False
@@ -41,7 +44,39 @@ class Bandit:
         self.push_time = 0
         self.push_cd = 25
 
+        # Chance to give the bandit an item to drop at death
+        if randint(1, self.item_chance) >= randint(1, 100):
+            powerup_chance = randint(1, self.powerup_chance)
+
+            if powerup_chance < randint(1, 100):
+                self.item_drop = 'brick'
+            else:
+                # Getting random collectible item using name in
+                # item sprites folder, not including .png
+                self.item_drop = random.choice([
+                    'shoot_pu', 'bullet_pu',
+                    'brick_pu', 'shield_pu'
+                ])
+
+
     def move_bandit(self):
+        if self.lifetime > self.max_lifetime:
+            top_distance = [[0, 2], 0 + self.rect.y]
+            bottom_distance = [[0, -2], SCREEN_HEIGHT - self.rect.y]
+            left_distance = [[-2, 0], 0 + self.rect.x]
+            right_distance = [[2, 0], SCREEN_WIDTH - self.rect.x]
+            largest = max(top_distance[1], bottom_distance[1], left_distance[1], right_distance[1])
+            side_goal = []
+
+            if largest == top_distance[1]: side_goal = top_distance
+            if largest == bottom_distance[1]: side_goal = bottom_distance
+            if largest == left_distance[1]: side_goal = left_distance
+            if largest == right_distance[1]: side_goal = right_distance
+
+            self.rect.x += side_goal[0][0]
+            self.rect.y += side_goal[0][1]
+            return
+
         if self.live_bandit and self.is_moving and not self.pushed:
             new_x = self.rect.x + self.direction[0] * 2
             new_y = self.rect.y + self.direction[1] * 2
@@ -55,7 +90,7 @@ class Bandit:
             self.rect.x += self.direction[0] * 2
             self.rect.y += self.direction[1] * 2
 
-    def update(self, target_position):
+    def update(self, target_position, bullets_list):
         self.shoot_timer += 1
 
         # Detect if offscreen and kill instantly
@@ -93,10 +128,10 @@ class Bandit:
 
         if self.shoot_timer >= self.shoot_cd:
             self.shoot_cd = randint(self.base_shoot_cd, int(self.base_shoot_cd * 2))
-            self.shoot(target_position)
+            self.shoot(target_position, bullets_list)
             self.shoot_timer = 0
 
-    def shoot(self, target_position):
+    def shoot(self, target_position, bullets_list):
         direction_x = target_position[0] - self.rect.centerx
         direction_y = target_position[1] - self.rect.centery
         magnitude = math.sqrt(direction_x ** 2 + direction_y ** 2)
@@ -105,12 +140,10 @@ class Bandit:
             direction = (direction_x / magnitude * 3, direction_y / magnitude * 3)
             bullet_position = (self.rect.centerx, self.rect.centery)
             bullet = Bullet(bullet_position, direction)
-            self.bullets.append(bullet)
+            bullets_list.append(bullet)
 
-    def update_bullets(self):
-        bullets_to_remove = []
-        for bullet in self.bullets:
-            bullet.update()
+    def update_bullets(self, bullets_list):
+        for bullet in bullets_list:
 
             # Verify the collision w bandit
             if self.live_bandit and bullet.reflect and bullet.rect.colliderect(self.rect):
@@ -118,16 +151,14 @@ class Bandit:
                 bullet.is_alive = False
                 if bullet.player_owned[0]:
                     bullet.player_owned[1].score += 20
+                    return self.item_drop
 
-                bullets_to_remove.append(bullet)
+                bullets_list.remove(bullet)
                 break
 
             if not bullet.is_alive:
-                bullets_to_remove.append(bullet)
+                bullets_list.remove(bullet)
 
-        for bullet in bullets_to_remove:
-            if bullet in self.bullets:
-                self.bullets.remove(bullet)
 
     # System for pushing exponentially, used to push bandits with the player's shield
     def push_check(self):

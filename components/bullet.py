@@ -53,6 +53,10 @@ class Bullet:
             self.player_owned[1] = player
             self.reflect = True
 
+            if player.bullet_powerup[0]:
+                self.size += 3 * player.bullet_powerup[1]
+                self.rect = pg.Rect(self.rect.x, self.rect.y, self.size, self.size)
+
 
     def player_collide_check(self, player):
         if not player:

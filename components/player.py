@@ -2,6 +2,7 @@
 Class for player(s) functionalities, so we can make multiple players
 with their own properties.
 """
+from components.bullet import Bullet
 from config import BASE_PLAYER_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT, BASE_SHIELD_X, BASE_SHIELD_Y, BASE_PLAYER_SPEED, \
     SHIELD_DISTANCE, FRAMERATE, SCREEN
 import pygame as pg
@@ -20,6 +21,7 @@ class Player:
         self.rect.topleft = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
         self.width = self.sprite.get_width()
         self.height = self.sprite.get_height()
+        self.direction = [0, 0]
 
         # Player's shield
         self.shield_x = 0
@@ -40,6 +42,8 @@ class Player:
         self.speed = BASE_PLAYER_SPEED
         self.shield_cooldown = 0
         self.push_power = 15
+        self.shoot_cooldown = 100
+        self.shoot_tick = 0
 
         self.shield_enabled = True
         self.facing_up = False
@@ -47,46 +51,64 @@ class Player:
         self.last_key = ''
         self.eyes_offset = [0, 0]
 
+        # Abilitity values, refering to the collectible power-ups
+        # First index is always to detect if player has it, second index is for level
+        self.bullet_powerup = [False, 0]
+        self.shield_powerup = [False, 0]
+        self.shoot_powerup = [False, 0]
+
         """
             Handle player behaviour depending on direction given
             The self.last_key conditions allows the shield to not break on diagonal movement
         """
     def change_direction(self, direction):
+        self.moving = True
+        shield_increment_x = 0
+        shield_increment_y = 0
+
+        if self.shield_powerup:
+            shield_increment_x = 15 * self.shield_powerup[1]
+            shield_increment_y = 2 * self.shield_powerup[1]
+
         if direction == 'left':
-            self.rect.x -= self.speed
+            self.direction[0] = -self.speed
+
             if self.last_key != 'up' and self.last_key != 'down':
                 self.shield_y = 0
-                self.shield_width = BASE_SHIELD_Y
-                self.shield_height = BASE_SHIELD_X
+                self.shield_width = BASE_SHIELD_Y + shield_increment_y
+                self.shield_height = BASE_SHIELD_X + shield_increment_x
             self.eyes_offset = [-4, 0]
             self.shield_x = -SHIELD_DISTANCE
         if direction == 'right':
-            self.rect.x += self.speed
+            self.direction[0] = self.speed
+
             if self.last_key != 'up' and self.last_key != 'dowm':
                 self.shield_y = 0
-                self.shield_width = BASE_SHIELD_Y
-                self.shield_height = BASE_SHIELD_X
+                self.shield_width = BASE_SHIELD_Y + shield_increment_y
+                self.shield_height = BASE_SHIELD_X + shield_increment_x
             self.eyes_offset = [4, 0]
             self.shield_x = SHIELD_DISTANCE
         if direction == 'down':
-            self.rect.y += self.speed
+            self.direction[1] = self.speed
+
             if self.last_key == 'left' or self.last_key == 'right':
                 self.eyes_offset[1] = 4
             else:
                 self.eyes_offset = [0, 4]
                 self.shield_x = 0
-                self.shield_width = BASE_SHIELD_X
-                self.shield_height = BASE_SHIELD_Y
+                self.shield_width = BASE_SHIELD_X + shield_increment_x
+                self.shield_height = BASE_SHIELD_Y + shield_increment_y
             self.shield_y = SHIELD_DISTANCE
         if direction == 'up':
-            self.rect.y -= self.speed
+            self.direction[1] = -self.speed
+
             if self.last_key == 'left' or self.last_key == 'right':
                 self.eyes_offset[1] = -4
             else:
                 self.facing_up = True
                 self.shield_x = 0
-                self.shield_width = BASE_SHIELD_X
-                self.shield_height = BASE_SHIELD_Y
+                self.shield_width = BASE_SHIELD_X + shield_increment_x
+                self.shield_height = BASE_SHIELD_Y + shield_increment_y
             self.shield_y = -SHIELD_DISTANCE
         else:
             self.facing_up = False
@@ -95,7 +117,9 @@ class Player:
         self.last_key = direction
 
     # Handle controls and changing sprites (shield, eyes, etc.)
-    def move(self, keys):
+    def move(self, keys, bullet_list):
+        # Predefine moving boolean to false and after detect movement
+        self.moving = False
 
         # Define a dictionary that maps control types to their respective key mappings
         key_mappings = {
@@ -133,6 +157,9 @@ class Player:
             else:
                 self.facing_up = False
 
+        self.rect.x += self.direction[0]
+        self.rect.y += self.direction[1]
+
         # Update the shield rotation and position
         self.shield_rect.width = self.shield_width
         self.shield_rect.height = self.shield_height
@@ -143,6 +170,25 @@ class Player:
         # Making sure the player stays on screen
         self.rect.x = max(0, min(self.rect.x, SCREEN_WIDTH - self.width))
         self.rect.y = max(0, min(self.rect.y, SCREEN_HEIGHT - self.height))
+
+        self.shoot_tick += 1
+        if (self.shoot_powerup[0] and self.moving and self.shield_enabled
+            and self.shoot_tick >= int(self.shoot_cooldown / self.shoot_powerup[1])):
+            self.shoot_tick = 0
+
+            direction = (self.direction[0], self.direction[1])
+            bullet_position = (self.rect.centerx, self.rect.centery)
+            bullet = Bullet(bullet_position, direction)
+
+            bullet.color = self.shield_color
+            bullet.can_hit = False
+            bullet.player_owned[0] = True
+            bullet.player_owned[1] = self
+            bullet.reflect = True
+
+            bullet_list.append(bullet)
+
+        self.direction = [0, 0]
 
         # Applying shield cooldown timer
         if not self.shield_enabled:
