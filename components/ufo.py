@@ -1,7 +1,9 @@
 """
 Class responsible for drawing the UFO's
 """
-from config import SQUARE_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT, BACKGROUND_COLOR, UFO_COLORS, COLOR_DAMAGED
+from config import SQUARE_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT, BACKGROUND_COLOR, UFO_COLORS, COLOR_DAMAGED, SCREEN
+from assets import UFO_SPRITE, UFO_SPRITE_RECT
+from components.music import Music
 import pygame as pg
 
 class Ufo:
@@ -15,6 +17,12 @@ class Ufo:
         self.center_position()
         self.rect = pg.Rect(SCREEN_WIDTH // 2 - self.size // 2, SCREEN_HEIGHT // 2 - self.size // 2, self.size,
                             self.size)
+        self.music = Music()
+
+        self.blink = [False, 0, 10, False]
+        self.image_mode = False
+        self.got_inside = False
+        self.rect_offset = 0
 
     def ufo_collide_check(self, bullet):
         if not self.ufos:
@@ -41,9 +49,34 @@ class Ufo:
         if broken_amount >= brick_amount:
             self.fully_broken = True
 
+    def explosion_collide_check(self, explosion):
+        if not self.ufos:
+            return
+
+        brick_amount = len(self.ufos)
+        broken_amount = 0
+
+        # check the collides by the lists
+        for i in range(brick_amount):
+            rect, strength, brick_row = self.ufos[i]
+
+            if self.ufos[i][1] <= 0:
+                broken_amount += 1
+
+            # Checks if the bullets collides w ufo
+            if (explosion.colliderect(rect)
+                and self.ufos[i][1] >= 1):
+                self.take_damage(i)
+                break
+
+        if broken_amount >= brick_amount:
+            self.fully_broken = True
+
     def take_damage(self, index):
         if index < len(self.ufos):
             self.ufos[index][1] -= 1
+            self.music.play_sfx('brick_break')
+
             if self.ufos[index][1] < 0:
                 self.ufos[index][1] = 0  # Manter a força em zero
 
@@ -75,19 +108,62 @@ class Ufo:
                 rect = pg.Rect(x + col_index * self.width, y + row_index * self.height, self.width, self.height)
                 self.ufos.append([rect, strength, row_index])
 
+    def victory_ufo(self, player1, player2):
+        check_1 = False
+        check_2 = False
+        if player1:
+            player1.victory_tick += 1
+            if player1.victory_tick > player1.victory_cooldown:
+                check_1 = UFO_SPRITE_RECT.colliderect(player1.rect)
+        else: check_1 = True
+        if player2:
+            player2.victory_tick += 1
+            if player2.victory_tick > player2.victory_cooldown:
+                check_2 = UFO_SPRITE_RECT.colliderect(player2.rect)
+        else: check_2 = True
+
+        UFO_SPRITE_RECT.center = self.rect.center
+        UFO_SPRITE_RECT.y -= 40
+
+        if not self.got_inside:
+            if check_1 and check_2:
+                self.got_inside = True
+                return True
+            else:
+                return False
+        else:
+            self.rect_offset += 2
+
+            UFO_SPRITE_RECT.y -= self.rect_offset
+
+
     def draw_ufo(self, surface):
         if self.live_ball:
-            for brick in self.ufos:
-                rect, strength, brick_row = brick
-                # change the color based in the strength
-                if strength <= 0:
-                    color = COLOR_DAMAGED
-                elif strength == 1:
-                    color = UFO_COLORS[0][brick_row]
-                elif strength == 2:
-                    color = UFO_COLORS[1][brick_row]
-                else:
-                    color = UFO_COLORS[2][brick_row]
+            self.blink[1] += 1
 
-                pg.draw.rect(surface, color, rect)
-                pg.draw.rect(surface, BACKGROUND_COLOR, rect, 2)
+            if not self.blink[3] and not self.got_inside and not self.image_mode:
+                for brick in self.ufos:
+                    rect, strength, brick_row = brick
+                    # change the color based in the strength
+                    if strength <= 0:
+                        color = COLOR_DAMAGED
+                    elif strength == 1:
+                        color = UFO_COLORS[0][brick_row]
+                    elif strength == 2:
+                        color = UFO_COLORS[1][brick_row]
+                    else:
+                        color = UFO_COLORS[2][brick_row]
+
+                    pg.draw.rect(surface, color, rect)
+                    pg.draw.rect(surface, BACKGROUND_COLOR, rect, 2)
+
+            elif self.blink[0]:
+                if self.blink[1] >= self.blink[2] and self.blink[3]:
+                    self.blink[1] = 0
+                    self.blink[3] = False
+                elif self.blink[1] >= self.blink[2] and not self.blink[3]:
+                    self.blink[1] = 0
+                    self.blink[3] = True
+
+            if self.image_mode:
+                SCREEN.blit(UFO_SPRITE, UFO_SPRITE_RECT)

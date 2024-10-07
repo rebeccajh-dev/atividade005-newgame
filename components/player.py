@@ -3,6 +3,7 @@ Class for player(s) functionalities, so we can make multiple players
 with their own properties.
 """
 from components.bullet import Bullet
+from components.music import Music
 from config import BASE_PLAYER_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT, BASE_SHIELD_X, BASE_SHIELD_Y, BASE_PLAYER_SPEED, \
     SHIELD_DISTANCE, FRAMERATE, SCREEN
 import pygame as pg
@@ -14,8 +15,16 @@ class Player:
         self.player_id = player_count    # Used to get and manipulate each player with ease
         self.sprite = pg.image.load(f'assets/player_sprites/{player_count}/body.png')
         self.eyes = pg.image.load(f'assets/player_sprites/{player_count}/eyes.png')
+        self.happy_eyes = pg.image.load(f'assets/player_sprites/{player_count}/happy_eyes.png')
+        self.closed_eyes = pg.image.load(f'assets/player_sprites/{player_count}/closed_eyes.png')
+        self.shock_eyes = pg.image.load(f'assets/player_sprites/{player_count}/shock_eyes.png')
         self.sprite = pg.transform.scale(self.sprite, BASE_PLAYER_SIZE)
         self.eyes = pg.transform.scale(self.eyes, BASE_PLAYER_SIZE)
+        self.happy_eyes = pg.transform.scale(self.happy_eyes, BASE_PLAYER_SIZE)
+        self.closed_eyes = pg.transform.scale(self.closed_eyes, BASE_PLAYER_SIZE)
+        self.shock_eyes = pg.transform.scale(self.shock_eyes, BASE_PLAYER_SIZE)
+
+        self.music = Music()
 
         self.rect = self.sprite.get_rect()
         self.rect.topleft = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
@@ -44,10 +53,19 @@ class Player:
         self.push_power = 15
         self.shoot_cooldown = 100
         self.shoot_tick = 0
+        self.victory_tick = 0
+        self.victory_cooldown = 60
 
+        self.ghost_sfx_tick = 0
+        self.ghost_sfx_cd = 10
+
+        self.first_move = False
         self.shield_enabled = True
         self.facing_up = False
         self.moving = False
+        self.broken_ufo = False
+        self.defeated = False
+        self.victory = False
         self.last_key = ''
         self.eyes_offset = [0, 0]
 
@@ -171,6 +189,7 @@ class Player:
         self.rect.x = max(0, min(self.rect.x, SCREEN_WIDTH - self.width))
         self.rect.y = max(0, min(self.rect.y, SCREEN_HEIGHT - self.height))
 
+        # Allowing custom player bullets from power-up
         self.shoot_tick += 1
         if (self.shoot_powerup[0] and self.moving and self.shield_enabled
             and self.shoot_tick >= int(self.shoot_cooldown / self.shoot_powerup[1])):
@@ -185,6 +204,7 @@ class Player:
             bullet.player_owned[0] = True
             bullet.player_owned[1] = self
             bullet.reflect = True
+            self.music.play_sfx('player_shoot')
 
             bullet_list.append(bullet)
 
@@ -195,20 +215,40 @@ class Player:
             self.shield_cooldown += 1
             if self.shield_cooldown % (3 * FRAMERATE) == 0:
                 self.shield_enabled = True
+                self.music.play_sfx('ghost')
 
-    def draw(self):
-        SCREEN.blit(self.sprite, self.rect)
-        rect_pos = self.rect
+    def explosion_collide_check(self, explosion):
+        if self.rect.colliderect(explosion) and self.shield_enabled:
+            self.shield_enabled = False
+            self.shield_cooldown = 0
+            self.music.play_sfx('player_damage')
 
+
+    def draw(self, eyes_offset=None, rect_offset=None):
         # Conditions for certain things to be drawn
-        if self.moving:
-            rect_pos = (self.rect.x + self.eyes_offset[0], self.rect.y + self.eyes_offset[1])
-        if not self.facing_up:
-            SCREEN.blit(self.eyes, rect_pos)
-        if self.shield_enabled:
-            self.eyes.set_alpha(255)
-            self.sprite.set_alpha(255)
-            pg.draw.rect(SCREEN, self.shield_color, self.shield_rect)
-        else:
-            self.eyes.set_alpha(128)
-            self.sprite.set_alpha(128)
+        if not self.defeated and not self.victory:
+            SCREEN.blit(self.sprite, self.rect)
+            rect_pos = self.rect
+
+            if self.moving:
+                rect_pos = (self.rect.x + self.eyes_offset[0], self.rect.y + self.eyes_offset[1])
+            if not self.facing_up:
+                SCREEN.blit(self.eyes, rect_pos)
+            if self.shield_enabled:
+                self.eyes.set_alpha(255)
+                self.sprite.set_alpha(255)
+                pg.draw.rect(SCREEN, self.shield_color, self.shield_rect)
+            else:
+                self.eyes.set_alpha(128)
+                self.sprite.set_alpha(128)
+
+                # Disabled as this might sound annoying
+                '''if self.ghost_sfx_tick >= self.ghost_sfx_cd:
+                    self.music.play_sfx('ghost')
+                    self.ghost_sfx_tick = 0'''
+        elif self.defeated:
+            self.rect.center = ((SCREEN_WIDTH / 2 + rect_offset), SCREEN_HEIGHT - 160)
+
+            SCREEN.blit(self.sprite, self.rect)
+            rect_pos = (self.rect.x + eyes_offset[0], self.rect.y + eyes_offset[1])
+            SCREEN.blit(self.closed_eyes, rect_pos)

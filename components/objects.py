@@ -1,5 +1,8 @@
 import pygame as pg
 
+from components.music import Music
+from components.text import Text
+from assets import TEXT_FONT
 from config import SCREEN
 
 
@@ -13,6 +16,7 @@ class Objects:
         self.has_frame = True
         self.frame_visible = False
         self.blink_seconds = 3
+        self.music = Music()
 
         if name == 'brick':
             self.has_frame = False
@@ -32,9 +36,11 @@ class Objects:
         self.rect = self.sprite.get_rect()
         self.rect.x = spawn_pos[0]
         self.rect.y = spawn_pos[1]
+        self.pointer = Text('v', (self.rect.centerx, self.rect.centery - self.size), TEXT_FONT, (255, 255, 80))
 
         self.collected = False
         self.visible = True
+        self.pointer_down = False
         self.blink = False
 
         self.lifetime = 0
@@ -42,6 +48,8 @@ class Objects:
         self.frame_tick = 0
         self.blink_tick = 0
         self.blink_cd = 15
+        self.pointer_tick = 0
+        self.pointer_cd = 20
 
         self.frame.fill((255, 255, 0), self.rect, special_flags=pg.BLEND_RGBA_MULT)
 
@@ -52,11 +60,14 @@ class Objects:
         # Apply different functions depending on the object, if player collected
         if self.rect.colliderect(player.rect) and not self.collected:
             self.collected = True
+            if self.name != 'brick':
+                self.music.play_sfx('powerup_get')
 
             # Check for any ufo bricks to heal, if not then give points to player
             if self.name == 'brick':
                 brick_healed = False
                 brick_amount = len(ufo.ufos)
+                self.music.play_sfx('brick_build')
 
                 for i in range(brick_amount):
                     if ufo.ufos[i][1] <= 0 and not brick_healed:
@@ -64,17 +75,25 @@ class Objects:
                         ufo.ufos[i][1] = 1
 
                 if not brick_healed:
+                    self.music.play_sfx('points')
                     player.score += 25
             if self.name == 'brick_pu':
                 brick_amount = len(ufo.ufos)
+                healed_bricks = 0
+                self.music.play_sfx('ufo_rebuild')
 
                 for i in range(brick_amount):
                     if ufo.ufos[i][1] < 3:
                         ufo.ufos[i][1] += 1
+                        healed_bricks += 1
                     else:
                         player.score += 15
+
+                if healed_bricks < int(brick_amount / 2):
+                    self.music.play_sfx('points')
             if self.name == 'bullet_pu':
                 player.bullet_powerup[0] = True
+                self.music.play_sfx('ufo_rebuild')
 
                 if player.bullet_powerup[1] < 3:
                     player.bullet_powerup[1] += 1
@@ -99,6 +118,16 @@ class Objects:
     def update(self):
         if self.lifetime >= self.despawn_time - self.blink_seconds:
             self.blink = True
+
+        self.pointer_tick += 1
+        if self.pointer_tick >= self.pointer_cd and self.pointer_down:
+            self.pointer.rect = (self.rect.centerx, self.rect.centery - self.size - 10)
+            self.pointer_tick = 0
+            self.pointer_down = False
+        elif self.pointer_tick >= self.pointer_cd and not self.pointer_down:
+            self.pointer.rect = (self.rect.centerx, self.rect.centery - self.size)
+            self.pointer_tick = 0
+            self.pointer_down = True
 
     def blink_object(self):
         if self.blink:
@@ -126,5 +155,6 @@ class Objects:
 
         if self.visible:
             SCREEN.blit(self.sprite, self.rect)
+            self.pointer.draw()
             if self.has_frame and self.frame_visible:
                 SCREEN.blit(self.frame, self.rect)

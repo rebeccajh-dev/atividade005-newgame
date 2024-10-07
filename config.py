@@ -53,6 +53,8 @@ TERRAIN_COLORS = [
     (65, 45, 40),
     (70, 50, 35),
     (130, 130, 130),
+    (130, 130, 130),
+    (130, 130, 130),
 ]
 
 # Constant variables
@@ -71,5 +73,11 @@ P2_TITLE_OFFSET = 15
 
 # Global variables
 MENU_COLOR = (10, 10, 30)
+VICTORY_COLOR = (30, 20, 50)
 BACKGROUND_COLOR = (40, 20, 0)
+DEFEAT_COLOR = (50, 15, 0)
+AMBUSH_COLOR = (50, 35, 10)
 SQUARE_SIZE = 25
+
+AMBUSH_FILTER = pg.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pg.SRCALPHA)
+AMBUSH_FILTER.fill((180, 80, 0, 50))  # 128 is the alpha value (0 is fully

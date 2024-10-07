@@ -3,6 +3,7 @@ Class for spawning bullets and handling their behaviour,
 they have a position to be spawned at and a direction to constantly go.
 """
 from config import SCREEN, MAX_BULLET_SPEED
+from components.music import Music
 import pygame as pg
 
 
@@ -14,6 +15,7 @@ class Bullet:
         self.rect = pg.Rect(position[0], position[1], self.size, self.size)
         self.speed_x = direction[0]
         self.speed_y = direction[1]
+        self.music = Music()
 
         self.lifetime = 0
         self.max_lifetime = 10
@@ -52,6 +54,7 @@ class Bullet:
             self.player_owned[0] = True
             self.player_owned[1] = player
             self.reflect = True
+            self.music.play_sfx('bounce')
 
             if player.bullet_powerup[0]:
                 self.size += 3 * player.bullet_powerup[1]
@@ -68,3 +71,4 @@ class Bullet:
             player.shield_cooldown = 0
             self.can_hit = False
             self.is_alive = False
+            self.music.play_sfx('player_damage')
