@@ -247,10 +247,8 @@ class Game:
 
             if keys[pg.K_EQUALS] or keys[pg.K_PLUS]:
                 self.music.change_volume('increase')
-                print(self.music.volume_offset)
             if keys[pg.K_MINUS]:
                 self.music.change_volume('decrease')
-                print(self.music.volume_offset)
 
             for event in pg.event.get():
                 # Quit the components
