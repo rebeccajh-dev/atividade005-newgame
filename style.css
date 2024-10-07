@@ -1,0 +1,227 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=VT323&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+:root {
+    --font1: 'VT323', sans-serif;
+}
+
+.color-one {
+    color: #3C1F18;
+}
+
+.color-two {
+    color: #1C7C4D;
+}
+
+.color-three {
+    color: #EAEAEA;
+}
+.color-four {
+    color: #A83232;
+}
+
+.color-five {
+    color: #7ED957;
+}
+
+.bg-one {
+    background-color: #3C1F18;
+}
+
+.bg-two {
+    background-color: #4fd293;
+}
+
+.bg-three {
+    background-color: #EAEAEA;
+}
+.bg-four {
+    background-color: #A83232;
+}
+
+.bg-five {
+    background-color: #7ED957;
+}
+
+.lato-thin {
+    font-family: "Lato", sans-serif;
+    font-weight: 100;
+    font-style: normal;
+  }
+  
+.lato-light {
+    font-family: "Lato", sans-serif;
+    font-weight: 300;
+    font-style: normal;
+  }
+  
+.lato-regular {
+    font-family: "Lato", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+  }
+  
+.lato-bold {
+    font-family: "Lato", sans-serif;
+    font-weight: 700;
+    font-style: normal;
+  }
+  
+.lato-black {
+    font-family: "Lato", sans-serif;
+    font-weight: 900;
+    font-style: normal;
+  }
+  
+ .lato-thin-italic {
+    font-family: "Lato", sans-serif;
+    font-weight: 100;
+    font-style: italic;
+  }
+  
+ .lato-light-italic {
+    font-family: "Lato", sans-serif;
+    font-weight: 300;
+    font-style: italic;
+  }
+  
+.lato-regular-italic {
+    font-family: "Lato", sans-serif;
+    font-weight: 400;
+    font-style: italic;
+  }
+  
+.lato-bold-italic {
+    font-family: "Lato", sans-serif;
+    font-weight: 700;
+    font-style: italic;
+  }
+  
+.lato-black-italic {
+    font-family: "Lato", sans-serif;
+    font-weight: 900;
+    font-style: italic;
+}
+
+.vt323-regular {
+    font-family: "VT323", sans-serif;
+}
+
+.press-start-2p-regular {
+    font-family: "Press Start 2P", system-ui;
+    font-weight: 400;
+    font-style: normal;
+  }
+  
+
+html, body {
+    margin:0;
+    padding: 0;
+  }
+
+  p {
+      font-family: var(--font3);
+  }
+
+  @media (max-width: 400px){
+    p {
+        font-size: 1em;
+    }
+}
+
+a {
+    text-decoration: none;
+    font-weight: lighter;
+    padding: 1.2em
+}
+
+a:hover {
+    text-decoration: underline;
+    color:#877272
+}
+
+a:active {
+    color: var(--cor0);
+}
+
+h2 {
+    margin-left: 1.2em;
+}
+
+#intro {
+    font-size: 2em;
+    font-weight: 500;
+}
+
+.intro {
+    padding-top: 25px;
+    padding-bottom: 60px;
+    background-image: url(images/gameplay/snippet2.jpeg);
+    background-repeat: no-repeat;
+    background-size: cover;
+    min-height: 750px;
+    background-attachment: fixed;
+}
+
+
+.heading-intro {
+    font-family: var(--font1);
+    font-size: 2.5em;
+    text-shadow: 5px 3px 5px black; 
+    
+}
+
+#sub-title-intro {
+    color: white;
+    font-family: var(--font3);
+    font-size: 17px;
+    font-weight: 300;
+}
+
+#about-her {
+    background-color: #EAEAEA;
+    color: var(--cor0);
+    padding-top: 7%;
+    text-align: justify;
+}
+
+#tribute-link {
+    text-decoration: underline;
+}
+
+.about-her-images {
+    box-shadow: rgba(0, 0, 0, 0.3) 0px 19px 38px, rgba(0, 0, 0, 0.22) 0px 15px 12px;
+    transition: 0.7s;
+    margin-bottom: 30px;
+}
+
+h5 {
+    color: white;
+    margin: 30px
+}
+
+#about-game-content {
+      margin-top: 100px;
+}
+
+#about-game-content p {
+    font-size: 1.1em;
+    margin: 0px 20px 20px 0px;
+}
+
+
+#books {
+    background-color: #3C1F18;
+    color: var(--cor0);
+    padding-top: 7%;
+}
+
+.book-image {
+    box-shadow: rgba(0, 0, 0, 0.088) 0px 19px 38px, rgba(0, 0, 0, 0.22) 0px 15px 12px;
+}
+
+#video-code {
+    background-color: #0a212a;
+    color: var(--cor0);
+    padding-top: 7%;
+}
