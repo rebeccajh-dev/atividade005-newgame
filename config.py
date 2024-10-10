@@ -81,3 +81,5 @@ SQUARE_SIZE = 25
 
 AMBUSH_FILTER = pg.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pg.SRCALPHA)
 AMBUSH_FILTER.fill((180, 80, 0, 50))  # 128 is the alpha value (0 is fully
+
+

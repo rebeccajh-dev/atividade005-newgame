@@ -23,6 +23,10 @@ import sys
 
 class Game:
         def __init__(self):
+            # Setting up the display window customization
+            pg.display.set_icon(TITLE_SPRITE)
+            pg.display.set_caption('WESTERN RAID v1.0')
+
             self.game_state = 'menu'
             self.ambush_mode = False
             self.can_spawn_bandits = False
@@ -394,10 +398,10 @@ class Game:
 
                 if not self.ambush_mode:
                     number_spawned = randint(1, 2)
-                    self.max_bandits = self.base_max_bandits + (2 * self.player_count)
+                    self.max_bandits = self.base_max_bandits + (1 * self.player_count)
                 else:
-                    number_spawned = randint(0, 2 + (2 * self.player_count))
-                    self.max_bandits = self.base_max_bandits + (4 * self.player_count)
+                    number_spawned = randint(0, 2 + (1 * self.player_count))
+                    self.max_bandits = self.base_max_bandits + (2 * self.player_count)
 
                 if self.can_spawn_bandits:
                     self.bandit_position(number_spawned)
@@ -614,7 +618,7 @@ class Game:
                         self.ufo.blink[0] = True
                         if not self.start_defeat:
                             self.start_defeat = True
-                            self.music.play('remove')
+                            self.music.play('none')
                             self.music.play_sfx('ufo_destroy')
                     elif self.defeat_transition[3] <= self.defeat_transition[4]:
                         self.defeat_transition[3] += 1

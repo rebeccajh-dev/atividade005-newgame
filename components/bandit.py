@@ -46,7 +46,7 @@ class Bandit:
             self.name = 'basic_bandit'
             self.powerup_chance = 40
 
-        self.sprite = pg.image.load(f'assets/bandit_sprites/{self.name}.png')
+        self.sprite = pg.image.load(f'assets/bandit_sprites/{self.name}.png').convert_alpha()
         self.sprite = pg.transform.scale(self.sprite, (self.random_size, self.random_size))
         self.rect = self.sprite.get_rect()  # Bandit size
         self.rect.x = spawn_pos[0]
@@ -99,23 +99,22 @@ class Bandit:
 
     def move_bandit(self, ufo):
         if self.lifetime > self.max_lifetime:
-            top_distance = [[0, 2], 0 + self.rect.y]
-            bottom_distance = [[0, -2], SCREEN_HEIGHT - self.rect.y]
-            left_distance = [[-2, 0], 0 + self.rect.x]
-            right_distance = [[2, 0], SCREEN_WIDTH - self.rect.x]
-            largest = max(top_distance[1], bottom_distance[1], left_distance[1], right_distance[1])
+            top_distance = [[0, -3], 0 + self.rect.y]
+            bottom_distance = [[0, 3], SCREEN_HEIGHT - self.rect.y]
+            left_distance = [[-3, 0], 0 + self.rect.x]
+            right_distance = [[3, 0], SCREEN_WIDTH - self.rect.x]
+            smallest_x = min(left_distance[1], right_distance[1])
+            smallest_y = min(top_distance[1], bottom_distance[1])
             side_goal = []
 
-            if largest == top_distance[1]: side_goal = top_distance
-            if largest == bottom_distance[1]: side_goal = bottom_distance
-            if largest == left_distance[1]: side_goal = left_distance
-            if largest == right_distance[1]: side_goal = right_distance
+            if smallest_x < smallest_y:
+                side_goal = left_distance if smallest_x == left_distance[1] else right_distance
+            else:
+                side_goal = top_distance if smallest_y == top_distance[1] else bottom_distance
 
             self.rect.x += side_goal[0][0]
             self.rect.y += side_goal[0][1]
-            return
-
-        if self.live_bandit and self.is_moving and not self.pushed:
+        elif self.live_bandit and self.is_moving and not self.pushed:
             if self.name != 'bomb_bandit':
                 new_x = self.rect.x + self.direction[0] * 2
                 new_y = self.rect.y + self.direction[1] * 2
@@ -164,7 +163,7 @@ class Bandit:
             self.move_timer = 0
 
         if (self.move_timer <= self.moving_time
-                and self.is_moving and not self.pushed):
+                and self.is_moving and not self.pushed) or self.lifetime > self.max_lifetime:
             self.move_bandit(ufo)
         elif self.is_moving:
             self.is_moving = False

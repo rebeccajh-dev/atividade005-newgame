@@ -24,9 +24,6 @@ class Music:
         sound.set_volume(self.sfx_offset)
         sound.play()
 
-    def stop(self):
-        pg.mixer.stop()
-
     def mute_music(self):
         if not self.button_pressed:
             if self.mute:
