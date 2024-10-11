@@ -2,8 +2,9 @@
 Class responsible for drawing the UFO's
 """
 from config import SQUARE_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT, BACKGROUND_COLOR, UFO_COLORS, COLOR_DAMAGED, SCREEN
-from assets import UFO_SPRITE, UFO_SPRITE_RECT
-from components.music import Music
+from assets import UFO_SPRITE, UFO_SPRITE_RECT, NORMAL_FONT
+from components.sound import Sound
+from components import text
 import pygame as pg
 
 class Ufo:
@@ -17,11 +18,18 @@ class Ufo:
         self.center_position()
         self.rect = pg.Rect(SCREEN_WIDTH // 2 - self.size // 2, SCREEN_HEIGHT // 2 - self.size // 2, self.size,
                             self.size)
-        self.music = Music()
+        self.sound = Sound()
+
+        self.pointer = text.Create('v v v', (self.rect.centerx, self.rect.centery - 110),
+                                   NORMAL_FONT, (255, 255, 80))
+        self.pointer_tick = 0
+        self.pointer_cd = 20
+        self.pointer_down = False
 
         self.blink = [False, 0, 10, False]
         self.image_mode = False
         self.got_inside = False
+        self.can_get_in = False
         self.rect_offset = 0
 
     def ufo_collide_check(self, bullet):
@@ -75,7 +83,7 @@ class Ufo:
     def take_damage(self, index):
         if index < len(self.ufos):
             self.ufos[index][1] -= 1
-            self.music.play_sfx('brick_break')
+            self.sound.play_sfx('brick_break')
 
             if self.ufos[index][1] < 0:
                 self.ufos[index][1] = 0  # Manter a força em zero
@@ -165,5 +173,16 @@ class Ufo:
                     self.blink[1] = 0
                     self.blink[3] = True
 
+            self.pointer_tick += 1
+            if self.pointer_tick >= self.pointer_cd and self.pointer_down:
+                self.pointer.rect = (self.rect.centerx, self.rect.centery - 120)
+                self.pointer_tick = 0
+                self.pointer_down = False
+            elif self.pointer_tick >= self.pointer_cd and not self.pointer_down:
+                self.pointer.rect = (self.rect.centerx, self.rect.centery - 110)
+                self.pointer_tick = 0
+                self.pointer_down = True
+
             if self.image_mode:
                 SCREEN.blit(UFO_SPRITE, UFO_SPRITE_RECT)
+                if self.can_get_in: self.pointer.draw()

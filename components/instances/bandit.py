@@ -1,7 +1,7 @@
 import random
 from random import randint, choice
-from components.bullet import Bullet
-from components.music import Music
+from components.instances.bullet import Bullet
+from components.sound import Sound
 from config import RANDOM_MOVE, SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN
 import math
 import pygame as pg
@@ -51,7 +51,7 @@ class Bandit:
         self.rect = self.sprite.get_rect()  # Bandit size
         self.rect.x = spawn_pos[0]
         self.rect.y = spawn_pos[1]
-        self.music = Music()
+        self.sound = Sound()
 
         self.item_drop = None
         self.live_bandit = True
@@ -191,7 +191,7 @@ class Bandit:
             bullet_position = (self.rect.centerx, self.rect.centery)
             bullet = Bullet(bullet_position, direction)
             bullets_list.append(bullet)
-            self.music.play_sfx('bandit_shoot')
+            self.sound.play_sfx('bandit_shoot')
 
     def bomb_bandit_check(self, ufo):
         if self.name == 'bomb_bandit':
@@ -212,7 +212,7 @@ class Bandit:
                 if not self.explode[0]:
                     self.explode[1] = 0
                     self.explode[0] = True
-                    self.music.play_sfx('explode')
+                    self.sound.play_sfx('explode')
                     self.explosion = pg.Rect(self.rect.x, self.rect.y,
                                         self.random_size * 2,
                                         self.random_size * 2)
@@ -240,7 +240,7 @@ class Bandit:
             if self.live_bandit and bullet.reflect and bullet.rect.colliderect(self.rect):
                 self.live_bandit = False
                 bullet.is_alive = False
-                self.music.play_sfx('bandit_damage')
+                self.sound.play_sfx('bandit_damage')
 
                 if bullet.player_owned[0]:
                     bullet.player_owned[1].score += self.points_value
@@ -278,7 +278,7 @@ class Bandit:
             # Changed relative position calculation to handle 2 vectors
             relative_collision = self.rect.clip(shield_rect).center
             offset_vector = pg.math.Vector2(self.rect.center) - pg.math.Vector2(relative_collision)
-            self.music.play_sfx('bandit_push')
+            self.sound.play_sfx('bandit_push')
 
             # This function just make the vector values in unit (-1 to 1)
             if offset_vector.length() != 0:
@@ -292,7 +292,7 @@ class Bandit:
 
             if self.lifetime < 2: self.lifetime = 2
 
-    def draw_bandit(self):
+    def draw(self):
         if not self.explode[3]:
             SCREEN.blit(self.sprite, self.rect)
 

@@ -3,7 +3,7 @@ import pygame as pg
 from config import SCREEN
 
 
-class Music:
+class Sound:
     def __init__(self):
         pg.mixer.init()
         self.mute = False

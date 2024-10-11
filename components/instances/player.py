@@ -2,8 +2,8 @@
 Class for player(s) functionalities, so we can make multiple players
 with their own properties.
 """
-from components.bullet import Bullet
-from components.music import Music
+from components.instances.bullet import Bullet
+from components.sound import Sound
 from config import BASE_PLAYER_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT, BASE_SHIELD_X, BASE_SHIELD_Y, BASE_PLAYER_SPEED, \
     SHIELD_DISTANCE, FRAMERATE, SCREEN
 import pygame as pg
@@ -24,7 +24,7 @@ class Player:
         self.closed_eyes = pg.transform.scale(self.closed_eyes, BASE_PLAYER_SIZE)
         self.shock_eyes = pg.transform.scale(self.shock_eyes, BASE_PLAYER_SIZE)
 
-        self.music = Music()
+        self.sound = Sound()
 
         self.rect = self.sprite.get_rect()
         self.rect.topleft = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
@@ -204,7 +204,7 @@ class Player:
             bullet.player_owned[0] = True
             bullet.player_owned[1] = self
             bullet.reflect = True
-            self.music.play_sfx('player_shoot')
+            self.sound.play_sfx('player_shoot')
 
             bullet_list.append(bullet)
 
@@ -215,13 +215,13 @@ class Player:
             self.shield_cooldown += 1
             if self.shield_cooldown % (3 * FRAMERATE) == 0:
                 self.shield_enabled = True
-                self.music.play_sfx('ghost')
+                self.sound.play_sfx('ghost')
 
     def explosion_collide_check(self, explosion):
         if self.rect.colliderect(explosion) and self.shield_enabled:
             self.shield_enabled = False
             self.shield_cooldown = 0
-            self.music.play_sfx('player_damage')
+            self.sound.play_sfx('player_damage')
 
 
     def draw(self, eyes_offset=None, rect_offset=None):
