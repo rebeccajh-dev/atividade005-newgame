@@ -1,6 +1,5 @@
 import pygame as pg
 
-from components.sound import Sound
 from components import text
 from assets import TEXT_FONT
 from config import SCREEN
@@ -16,7 +15,6 @@ class Objects:
         self.has_frame = True
         self.frame_visible = False
         self.blink_seconds = 3
-        self.sound = Sound()
 
         if name == 'brick':
             self.has_frame = False
@@ -55,7 +53,7 @@ class Objects:
 
         self.frame.fill((255, 255, 0), self.rect, special_flags=pg.BLEND_RGBA_MULT)
 
-    def check_collect(self, player, ufo):
+    def check_collect(self, game, player):
         if not player:
             return
 
@@ -63,39 +61,39 @@ class Objects:
         if self.rect.colliderect(player.rect) and not self.collected:
             self.collected = True
             if self.name != 'brick':
-                self.sound.play_sfx('powerup_get')
+                game.sound.play_sfx('powerup_get')
 
             # Check for any ufo bricks to heal, if not then give points to player
             if self.name == 'brick':
                 brick_healed = False
-                brick_amount = len(ufo.ufos)
-                self.sound.play_sfx('brick_build')
+                brick_amount = len(game.ufo.ufos)
+                game.sound.play_sfx('brick_build')
 
                 for i in range(brick_amount):
-                    if ufo.ufos[i][1] <= 0 and not brick_healed:
+                    if game.ufo.ufos[i][1] <= 0 and not brick_healed:
                         brick_healed = True
-                        ufo.ufos[i][1] = 1
+                        game.ufo.ufos[i][1] = 1
 
                 if not brick_healed:
-                    self.sound.play_sfx('points')
+                    game.sound.play_sfx('points')
                     player.score += 25
             if self.name == 'brick_pu':
-                brick_amount = len(ufo.ufos)
+                brick_amount = len(game.ufo.ufos)
                 healed_bricks = 0
-                self.sound.play_sfx('ufo_rebuild')
+                game.sound.play_sfx('ufo_rebuild')
 
                 for i in range(brick_amount):
-                    if ufo.ufos[i][1] < 3:
-                        ufo.ufos[i][1] += 1
+                    if game.ufo.ufos[i][1] < 3:
+                        game.ufo.ufos[i][1] += 1
                         healed_bricks += 1
                     else:
                         player.score += 15
 
-                if healed_bricks < int(brick_amount / 2):
-                    self.sound.play_sfx('points')
+                if healed_bricks < 1:
+                    game.sound.play_sfx('points')
             if self.name == 'bullet_pu':
                 player.bullet_powerup[0] = True
-                self.sound.play_sfx('ufo_rebuild')
+                game.sound.play_sfx('ufo_rebuild')
 
                 if player.bullet_powerup[1] < 3:
                     player.bullet_powerup[1] += 1
@@ -107,6 +105,7 @@ class Objects:
                 if player.shield_powerup[1] < 3:
                     player.shield_powerup[1] += 1
                 else:
+                    game.sound.play_sfx('points')
                     player.score += 100
             if self.name == 'shoot_pu':
                 player.shoot_powerup[0] = True
@@ -114,6 +113,7 @@ class Objects:
                 if player.shoot_powerup[1] < 3:
                     player.shoot_powerup[1] += 1
                 else:
+                    game.sound.play_sfx('points')
                     player.score += 100
 
 

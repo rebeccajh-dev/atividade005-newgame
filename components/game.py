@@ -1,9 +1,7 @@
 """
 Class that initializes the main logic of the components and handles events.
 """
-import random
-
-from random import randint, choice
+from random import randint
 
 from components.instances.ufo import Ufo
 from components.screen import display
@@ -14,7 +12,8 @@ from components.controls import handle_events
 from components.physics import update_physics
 
 from assets import TITLE_SPRITE
-from config import SCREEN_WIDTH, SCREEN_HEIGHT, FRAMERATE, PLAYER_COLORS, SCREEN, P2_TITLE_OFFSET
+from config import SCREEN_WIDTH, SCREEN_HEIGHT, FRAMERATE, PLAYER_COLORS, SCREEN, P2_TITLE_OFFSET, \
+    LEVEL1_CONFIG, LEVEL2_CONFIG, LEVEL3_CONFIG
 
 import pygame as pg
 
@@ -46,7 +45,7 @@ class Game:
 
         # Base Ambush settings
         self.ambush_mode = False
-        self.ambush_time = randint(2, 3)
+        self.ambush_time = randint(140, 160)
         self.difficulty_time = 15  # Time in seconds of when difficulty increases
 
         # Getting classes
@@ -58,7 +57,6 @@ class Game:
         self.objects = []
         self.bullets = []
         self.bandits = []
-        self.terrain = []
 
         # These lists are used for "animations" or effects
         self.menu_loop = [35, False]
@@ -68,7 +66,8 @@ class Game:
         self.base_begin_start = [True, 0, 600]
         self.begin_start = self.base_begin_start[:]
         self.ambush_start = self.base_ambush_start[:]
-        self.start_defeat = False
+        self.defeat = False
+        self.victory = False
         self.base_defeat_values = [
             False,  # Transition enabled
             0, 120,  # UFO blinking animation timer
@@ -91,7 +90,7 @@ class Game:
         self.defeat_transition = self.base_defeat_values[:]
 
         # Loading some starter stuff
-        self.level = levels.create_map(self)
+        self.level = levels.Level('desert', LEVEL1_CONFIG, self)
         self.sound.play('menu', -1)
 
     def run(self):
@@ -111,7 +110,8 @@ class Game:
         self.sound.play('menu', -1)
         self.game_state = 'menu'
         self.ambush_mode = False
-        self.start_defeat = False
+        self.defeat = False
+        self.victory = False
         self.text.begin_message.blink = False
         self.game_timer = 0
         self.ufo = Ufo()
@@ -122,7 +122,7 @@ class Game:
         self.player_2 = None
         self.player_count = 0
         self.game_tick = 0
-        levels.create_map(self)
+        self.level = levels.Level('desert', LEVEL1_CONFIG, self)
 
     def set_final_score(self):
         new_best = 0
@@ -135,7 +135,7 @@ class Game:
         else:
             self.text.new_best_text.enabled = False
 
-    # Merged "draw" function with components state to make bullets possible
+    # Merged "draw" function with components state to make bullet_sprites possible
     def update_game_state(self):
         if self.game_state == 'menu':
             display.render_menu(self)
@@ -147,4 +147,5 @@ class Game:
         elif self.game_state == 'defeat':
             display.render_defeat(self)
 
+        display.always_render(self)
         pg.display.flip()

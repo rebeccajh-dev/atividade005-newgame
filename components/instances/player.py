@@ -3,7 +3,6 @@ Class for player(s) functionalities, so we can make multiple players
 with their own properties.
 """
 from components.instances.bullet import Bullet
-from components.sound import Sound
 from config import BASE_PLAYER_SIZE, SCREEN_WIDTH, SCREEN_HEIGHT, BASE_SHIELD_X, BASE_SHIELD_Y, BASE_PLAYER_SPEED, \
     SHIELD_DISTANCE, FRAMERATE, SCREEN
 import pygame as pg
@@ -23,9 +22,6 @@ class Player:
         self.happy_eyes = pg.transform.scale(self.happy_eyes, BASE_PLAYER_SIZE)
         self.closed_eyes = pg.transform.scale(self.closed_eyes, BASE_PLAYER_SIZE)
         self.shock_eyes = pg.transform.scale(self.shock_eyes, BASE_PLAYER_SIZE)
-
-        self.sound = Sound()
-
         self.rect = self.sprite.get_rect()
         self.rect.topleft = (SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2)
         self.width = self.sprite.get_width()
@@ -67,6 +63,7 @@ class Player:
         self.defeated = False
         self.victory = False
         self.last_key = ''
+        self.last_direction = [0, 0]
         self.eyes_offset = [0, 0]
 
         # Abilitity values, refering to the collectible power-ups
@@ -90,28 +87,34 @@ class Player:
 
         if direction == 'left':
             self.direction[0] = -self.speed
+            self.last_direction[0] = -2
 
             if self.last_key != 'up' and self.last_key != 'down':
                 self.shield_y = 0
                 self.shield_width = BASE_SHIELD_Y + shield_increment_y
                 self.shield_height = BASE_SHIELD_X + shield_increment_x
+                self.last_direction[1] = 0
             self.eyes_offset = [-4, 0]
             self.shield_x = -SHIELD_DISTANCE
         if direction == 'right':
             self.direction[0] = self.speed
+            self.last_direction[0] = 2
 
             if self.last_key != 'up' and self.last_key != 'dowm':
                 self.shield_y = 0
                 self.shield_width = BASE_SHIELD_Y + shield_increment_y
                 self.shield_height = BASE_SHIELD_X + shield_increment_x
+                self.last_direction[1] = 0
             self.eyes_offset = [4, 0]
             self.shield_x = SHIELD_DISTANCE
         if direction == 'down':
             self.direction[1] = self.speed
+            self.last_direction[1] = 2
 
             if self.last_key == 'left' or self.last_key == 'right':
                 self.eyes_offset[1] = 4
             else:
+                self.last_direction[0] = 0
                 self.eyes_offset = [0, 4]
                 self.shield_x = 0
                 self.shield_width = BASE_SHIELD_X + shield_increment_x
@@ -119,10 +122,12 @@ class Player:
             self.shield_y = SHIELD_DISTANCE
         if direction == 'up':
             self.direction[1] = -self.speed
+            self.last_direction[1] = -2
 
             if self.last_key == 'left' or self.last_key == 'right':
                 self.eyes_offset[1] = -4
             else:
+                self.last_direction[0] = 0
                 self.facing_up = True
                 self.shield_x = 0
                 self.shield_width = BASE_SHIELD_X + shield_increment_x
@@ -135,7 +140,7 @@ class Player:
         self.last_key = direction
 
     # Handle controls and changing sprites (shield, eyes, etc.)
-    def move(self, keys, bullet_list):
+    def move(self, game, keys):
         # Predefine moving boolean to false and after detect movement
         self.moving = False
 
@@ -189,24 +194,27 @@ class Player:
         self.rect.x = max(0, min(self.rect.x, SCREEN_WIDTH - self.width))
         self.rect.y = max(0, min(self.rect.y, SCREEN_HEIGHT - self.height))
 
-        # Allowing custom player bullets from power-up
+        # Allowing custom player bullet_sprites from power-up
         self.shoot_tick += 1
-        if (self.shoot_powerup[0] and self.moving and self.shield_enabled
-            and self.shoot_tick >= int(self.shoot_cooldown / self.shoot_powerup[1])):
+        shoot_power = self.shoot_powerup[1]
+        if self.shoot_powerup[0] and self.shoot_tick >= int(self.shoot_cooldown / shoot_power):
             self.shoot_tick = 0
 
-            direction = (self.direction[0], self.direction[1])
+            direction = (self.last_direction[0] * shoot_power, self.last_direction[1] * shoot_power)
             bullet_position = (self.rect.centerx, self.rect.centery)
-            bullet = Bullet(bullet_position, direction)
+            if self.bullet_powerup[0]:
+                bullet = Bullet('bullet', bullet_position, direction, 8 + (2 * self.bullet_powerup[1]), self.shield_color)
+            else:
+                bullet = Bullet('bullet', bullet_position, direction, 8, self.shield_color)
 
             bullet.color = self.shield_color
             bullet.can_hit = False
             bullet.player_owned[0] = True
             bullet.player_owned[1] = self
             bullet.reflect = True
-            self.sound.play_sfx('player_shoot')
+            game.sound.play_sfx('player_shoot')
 
-            bullet_list.append(bullet)
+            game.bullets.append(bullet)
 
         self.direction = [0, 0]
 
@@ -215,13 +223,13 @@ class Player:
             self.shield_cooldown += 1
             if self.shield_cooldown % (3 * FRAMERATE) == 0:
                 self.shield_enabled = True
-                self.sound.play_sfx('ghost')
+                game.sound.play_sfx('ghost')
 
-    def explosion_collide_check(self, explosion):
-        if self.rect.colliderect(explosion) and self.shield_enabled:
+    def damage_collide_check(self, game, hitbox):
+        if self.rect.colliderect(hitbox) and self.shield_enabled:
             self.shield_enabled = False
             self.shield_cooldown = 0
-            self.sound.play_sfx('player_damage')
+            game.sound.play_sfx('player_damage')
 
 
     def draw(self, eyes_offset=None, rect_offset=None):
@@ -241,11 +249,6 @@ class Player:
             else:
                 self.eyes.set_alpha(128)
                 self.sprite.set_alpha(128)
-
-                # Disabled as this might sound annoying
-                '''if self.ghost_sfx_tick >= self.ghost_sfx_cd:
-                    self.music.play_sfx('ghost')
-                    self.ghost_sfx_tick = 0'''
         elif self.defeated:
             self.rect.center = ((SCREEN_WIDTH / 2 + rect_offset), SCREEN_HEIGHT - 160)
 

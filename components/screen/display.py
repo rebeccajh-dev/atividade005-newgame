@@ -4,9 +4,23 @@ from assets import TITLE_FONT, TEXT_FONT, NORMAL_FONT, TITLE_SPRITE, TITLE_SPRIT
     WIN_SPRITE_EYES_RECT2, DEFEAT_CAGE, DEFEAT_CAGE_RECT
 
 from config import SCREEN_WIDTH, COLOR_WHITE, COLOR_RED, SCREEN_HEIGHT, FRAMERATE, PLAYER_COLORS, MENU_COLOR, SCREEN, \
-    BACKGROUND_COLOR, AMBUSH_FILTER, VICTORY_COLOR, DEFEAT_COLOR, P2_TITLE_OFFSET
+    AMBUSH_FILTER, VICTORY_COLOR, DEFEAT_COLOR, P2_TITLE_OFFSET
 
 import pygame as pg
+
+def hud_message_update(game, new_text):
+    game.text.HUD_text_list[0] = new_text
+    game.text.HUD_text_list[1] = 0
+    game.text.HUD_text_list[3] = True
+
+def always_render(game):
+    if game.text.HUD_text_list[0] and game.text.HUD_text_list[3]:
+        game.text.HUD_text_list[1] += 1
+        game.text.HUD_text_list[0].draw()
+
+        if game.text.HUD_text_list[1] >= game.text.HUD_text_list[2]:
+            game.text.HUD_text_list[3] = False
+            game.text.HUD_text_list[1] = 0
 
 ''' ============================================================= '''
 ''' ========== HANDLING EVERYTHING THAT SHOWS IN MENU  ========== '''
@@ -78,12 +92,10 @@ def render_menu(game):
 ''' ========== HANDLING EVERYTHING THAT SHOWS IN ROUND ========== '''
 ''' ============================================================= '''
 def render_round(game):
-    SCREEN.fill(BACKGROUND_COLOR)
+    SCREEN.fill(game.level.background_color)
 
-    for terrain in game.terrain:
+    for terrain in game.level.map:
         terrain.draw()
-
-    game.ufo.draw_ufo(SCREEN)
 
     if game.player_1:
         if not game.defeat_transition[0]: game.player_1.draw()
@@ -97,6 +109,19 @@ def render_round(game):
         game.text.p2_points_text.rect = (SCREEN_WIDTH - 90, 30)
         game.text.p2_points_text.draw()
         game.text.move_tip.string = f'! {game.player_1.controls}/{game.player_2.controls} keys to move !'
+
+    for terrain in game.level.map:
+        if terrain.size < 90:
+            terrain_Zindex = terrain.rect.y + int(terrain.size / 2)
+        else:
+            terrain_Zindex = terrain.rect.y + int(terrain.size / 1.4)
+
+        if game.player_1 and game.player_1.rect.centery <= terrain_Zindex:
+            terrain.draw()
+        elif game.player_2 and game.player_2.rect.centery <= terrain_Zindex:
+            terrain.draw()
+
+    game.ufo.draw_ufo(game)
 
     for item in game.objects:
         item.draw()
@@ -165,12 +190,13 @@ def render_round(game):
         pg.mixer.stop()
     elif time_left == 0 and not game.victory_transition[0]:
         game.victory_transition[0] = True
+        game.can_spawn_bandits = False
         game.sound.play_sfx('ufo_rebuild')
         game.sound.play('you_should_probably_get_in_the_ufo_now', -1)
 
         # Add points for every brick not destroyed at the end
         for brick in game.ufo.ufos:
-            rect, strength, brick_row = brick
+            rect, strength, brick_row, surface = brick
             if strength > 0:
                 if game.player_1: game.player_1.score += 50
                 if game.player_2: game.player_2.score += 50
@@ -178,6 +204,7 @@ def render_round(game):
 
     ''' VICTORY CUTSCENE PROCESS '''
     if game.victory_transition[0]:
+        game.victory = True
         if game.victory_transition[-1]:
             SCREEN.fill((0, 0, 0))
             game.victory_transition[0] = False
@@ -207,7 +234,7 @@ def render_round(game):
                 SCREEN.fill(VICTORY_COLOR)
                 game.victory_transition[7] = True
             elif game.victory_transition[5] % 8 == 0 and game.victory_transition[7]:
-                SCREEN.fill(BACKGROUND_COLOR)
+                SCREEN.fill(game.level.background_color)
                 game.victory_transition[7] = False
         elif game.victory_transition[7] <= game.victory_transition[8]:
             game.victory_transition[7] += 1
@@ -234,8 +261,8 @@ def render_round(game):
         elif game.defeat_transition[1] <= game.defeat_transition[2]:
             game.defeat_transition[1] += 1
             game.ufo.blink[0] = True
-            if not game.start_defeat:
-                game.start_defeat = True
+            if not game.defeat:
+                game.defeat = True
                 game.sound.play('none')
                 game.sound.play_sfx('ufo_destroy')
         elif game.defeat_transition[3] <= game.defeat_transition[4]:
@@ -246,7 +273,7 @@ def render_round(game):
                 SCREEN.fill(DEFEAT_COLOR)
                 game.defeat_transition[5] = True
             elif game.defeat_transition[3] % 8 == 0 and game.defeat_transition[5]:
-                SCREEN.fill(BACKGROUND_COLOR)
+                SCREEN.fill(game.level.background_color)
                 game.defeat_transition[5] = False
         else:
             game.defeat_transition[5] = False
