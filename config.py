@@ -41,6 +41,13 @@ UFO_COLORS = [
         (200, 230, 20),
         (200, 230, 20)
     ],
+    [  # Brick power 100 (also called reward mode for victory)
+        (255, 255, 0),
+        (255, 255, 0),
+        (255, 255, 0),
+        (255, 255, 0),
+        (255, 255, 0)
+    ],
 ]
 
 # Constant variables

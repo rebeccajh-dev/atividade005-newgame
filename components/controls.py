@@ -11,7 +11,7 @@ def handle_events(game):
     keys = pg.key.get_pressed()
 
     # Player movement check
-    if not game.defeat and not game.victory:
+    if not game.defeat:
         if game.player_1:
             game.player_1.move(game, keys)
         if game.player_2:
@@ -25,22 +25,27 @@ def handle_events(game):
                 game.player_count += 1
                 game.player_1 = Player('WASD', game.player_count, color)
                 game.player_1.rect.center = ((SCREEN_WIDTH / 2) - 120, SCREEN_HEIGHT / 2)
+                game.sound.play_sfx('join')
             elif not game.player_2 and game.player_1.controls != 'WASD':
                 color = PLAYER_COLORS[game.player_count]
                 game.player_count += 1
                 game.player_2 = Player('WASD', game.player_count, color)
                 game.player_2.rect.center = ((SCREEN_WIDTH / 2) + 120, SCREEN_HEIGHT / 2)
+                game.sound.play_sfx('join')
         if keys[pg.K_UP] or keys[pg.K_LEFT] or keys[pg.K_DOWN] or keys[pg.K_RIGHT]:
             if not game.player_1:
                 color = PLAYER_COLORS[game.player_count]
                 game.player_count += 1
                 game.player_1 = Player('ARROWS', game.player_count, color)
                 game.player_1.rect.center = ((SCREEN_WIDTH / 2) - 120, SCREEN_HEIGHT / 2)
+                game.sound.play_sfx('join')
             elif not game.player_2 and game.player_1.controls != 'ARROWS':
                 color = PLAYER_COLORS[game.player_count]
                 game.player_count += 1
                 game.player_2 = Player('ARROWS', game.player_count, color)
                 game.player_2.rect.center = ((SCREEN_WIDTH / 2) + 120, SCREEN_HEIGHT / 2)
+                game.sound.play_sfx('join')
+
 
     if keys[pg.K_RETURN]:
         if game.game_state == 'menu':

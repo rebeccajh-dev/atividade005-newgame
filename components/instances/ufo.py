@@ -157,8 +157,10 @@ class Ufo:
                     color = UFO_COLORS[0][brick_row]
                 elif strength == 2:
                     color = UFO_COLORS[1][brick_row]
-                else:
+                elif 3 <= strength < 100:
                     color = UFO_COLORS[2][brick_row]
+                else:
+                    color = UFO_COLORS[3][brick_row]
 
                 surface.fill(color)
                 SCREEN.blit(surface, rect)

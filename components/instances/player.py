@@ -197,7 +197,7 @@ class Player:
         # Allowing custom player bullet_sprites from power-up
         self.shoot_tick += 1
         shoot_power = self.shoot_powerup[1]
-        if self.shoot_powerup[0] and self.shoot_tick >= int(self.shoot_cooldown / shoot_power):
+        if self.shoot_powerup[0] and self.shoot_tick >= int(self.shoot_cooldown / shoot_power) and not self.victory:
             self.shoot_tick = 0
 
             direction = (self.last_direction[0] * shoot_power, self.last_direction[1] * shoot_power)

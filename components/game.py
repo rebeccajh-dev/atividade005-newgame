@@ -6,6 +6,7 @@ from random import randint
 from components.instances.ufo import Ufo
 from components.screen import display
 from components.screen import levels
+from components.screen.particles import ParticleEmitter
 from components.text import Text
 from components.sound import Sound
 from components.controls import handle_events
@@ -52,6 +53,30 @@ class Game:
         self.sound = Sound()
         self.text = Text()
         self.ufo = Ufo()
+
+        # Particle classes
+        self.stars = ParticleEmitter(None, (200, 200, 200, 130))
+        self.stars.random_alpha = [True, 80]
+
+        self.win_stars = ParticleEmitter(None, (150, 150, 150, 200))
+        self.win_stars.random_color = [True, False, 100]
+        self.win_stars.random_alpha = [True, 50]
+        self.win_stars.fading[1] = 0.5
+        self.win_stars.lifetime = [5, 8]
+        self.win_stars.size = [5, 15]
+        self.win_stars.direction_x = [2, 7]
+        self.win_stars.screen_posx = [-500, SCREEN_WIDTH - 600]
+        self.win_stars.rate = 12
+
+        self.ambush_fog = ParticleEmitter('fog', (255, 210, 100, 40))
+        self.ambush_fog.random_alpha = [True, 20]
+        self.ambush_fog.fading = [True, 1, 5]
+        self.ambush_fog.lifetime = [5, 7]
+        self.ambush_fog.size = [200, 400]
+        self.ambush_fog.direction_x = [3, 6]
+        self.ambush_fog.screen_posx = [-200, 100]
+        self.ambush_fog.rate = 2
+        self.ambush_fog.enabled = False
 
         # List for instances to render and update
         self.objects = []
@@ -112,6 +137,7 @@ class Game:
         self.ambush_mode = False
         self.defeat = False
         self.victory = False
+        self.ambush_fog.enabled = False
         self.text.begin_message.blink = False
         self.game_timer = 0
         self.ufo = Ufo()
@@ -138,13 +164,25 @@ class Game:
     # Merged "draw" function with components state to make bullet_sprites possible
     def update_game_state(self):
         if self.game_state == 'menu':
+            if not self.stars.enabled: self.stars.enabled = True
+            if self.win_stars.enabled: self.win_stars.enabled = False
+
             display.render_menu(self)
         elif self.game_state == 'round':
+            if self.stars.enabled: self.stars.enabled = False
+            if self.win_stars.enabled: self.win_stars.enabled = False
+
             update_physics(self)
             display.render_round(self)
         elif self.game_state == 'victory':
+            if not self.win_stars.enabled: self.win_stars.enabled = True
+            if self.stars.enabled: self.stars.enabled = False
+
             display.render_victory(self)
         elif self.game_state == 'defeat':
+            if self.stars.enabled: self.stars.enabled = False
+            if self.win_stars.enabled: self.win_stars.enabled = False
+
             display.render_defeat(self)
 
         display.always_render(self)

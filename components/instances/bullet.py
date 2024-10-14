@@ -4,7 +4,7 @@ they have a position to be spawned at and a direction to constantly go.
 """
 from config import SCREEN, MAX_BULLET_SPEED
 import pygame as pg
-from random import randint, choices
+from random import randint
 
 
 class Bullet:

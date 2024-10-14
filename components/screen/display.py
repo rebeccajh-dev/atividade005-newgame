@@ -27,6 +27,8 @@ def always_render(game):
 ''' ============================================================= '''
 def render_menu(game):
     SCREEN.fill(MENU_COLOR)
+    game.stars.update(game)
+
     game.text.title_text.draw()
     game.text.choose_text.draw()
     game.text.volume_text.draw()
@@ -93,6 +95,7 @@ def render_menu(game):
 ''' ============================================================= '''
 def render_round(game):
     SCREEN.fill(game.level.background_color)
+    if game.stars.enabled: game.stars.enabled = False
 
     for terrain in game.level.map:
         terrain.draw()
@@ -154,13 +157,16 @@ def render_round(game):
         game.text.timer_text.draw()
 
     ''' AMBUSH MODE PROCESS '''
-    if game.game_timer > game.ambush_time and not game.ambush_mode:
+    if (game.game_timer > game.ambush_time and not game.ambush_mode
+            and not game.victory and not game.defeat):
         game.ambush_mode = True
         game.ambush_start[5] = True
         game.ambush_start[8] = True
         game.sound.play_sfx('ambush')
         game.sound.play('BANDIT-RAID', -1)
+        game.ambush_fog.enabled = True
 
+    game.ambush_fog.update(game)
     if game.ambush_mode:
         if not game.ambush_start[0]:
             SCREEN.blit(AMBUSH_FILTER, (0, 0))
@@ -186,20 +192,42 @@ def render_round(game):
     # Defeat if ufo is broken, should show a defeat screen with final score
     if game.ufo.fully_broken and not game.defeat_transition[0]:
         game.defeat_transition[0] = True
+        game.ambush_fog.enabled = False
         game.sound.play_sfx('ufo_destroy')
         pg.mixer.stop()
-    elif time_left == 0 and not game.victory_transition[0]:
+    elif time_left < 0 and not game.victory_transition[0]:
         game.victory_transition[0] = True
         game.can_spawn_bandits = False
-        game.sound.play_sfx('ufo_rebuild')
-        game.sound.play('you_should_probably_get_in_the_ufo_now', -1)
+        game.ambush_fog.enabled = False
+        game.sound.play('none')
 
         # Add points for every brick not destroyed at the end
         for brick in game.ufo.ufos:
             rect, strength, brick_row, surface = brick
+            game.sound.play_sfx('brick_build')
             if strength > 0:
                 if game.player_1: game.player_1.score += 50
                 if game.player_2: game.player_2.score += 50
+
+                brick[1] = 100
+                game.sound.play_sfx('points')
+            else:
+                brick[1] = 1
+
+            pg.time.delay(100)
+
+            # Drawing temporary screen for UFO points effect
+            SCREEN.fill(game.level.background_color)
+            game.ufo.draw_ufo(game)
+            for terrain in game.level.map:
+                terrain.draw()
+
+            pg.display.flip()
+
+        pg.time.delay(1000)
+
+        game.sound.play('you_should_probably_get_in_the_ufo_now', -1)
+        game.sound.play_sfx('ufo_rebuild')
 
 
     ''' VICTORY CUTSCENE PROCESS '''
@@ -244,6 +272,7 @@ def render_round(game):
             game.victory_transition[9] = False
             game.victory_transition[-1] = True
             UFO_SPRITE_RECT.center = (SCREEN_WIDTH / 2, 420)
+            UFO_SPRITE_RECT2.center = (SCREEN_WIDTH / 2, 420 + P2_TITLE_OFFSET)
 
             TITLE_SPRITE_RECT.center = (SCREEN_WIDTH / 2, 440)
             WIN_SPRITE_EYES_RECT.center = TITLE_SPRITE_RECT.center
@@ -285,6 +314,8 @@ def render_round(game):
 ''' ============================================================= '''
 def render_victory(game):
     SCREEN.fill(VICTORY_COLOR)
+    game.win_stars.update(game)
+
     game.text.survived_text.draw()
     game.text.final_message.draw()
     game.text.final_message2.draw()
