@@ -100,10 +100,10 @@ def update_physics(game):
     # Creating bandits
     if not game.ambush_mode:
         number_spawned = randint(1, game.max_spawned)
-        game.max_bandits = game.base_max_bandits + (game.bandit_spawn_multi[0] * game.player_count)
+        game.max_bandits = game.base_max_bandits + (game.bandit_spawn_multi[0] * game.player_count) + game.max_increase
     else:
         number_spawned = randint(0, game.max_spawned + game.player_count)
-        game.max_bandits = game.base_max_bandits + (game.bandit_spawn_multi[1] * game.player_count)
+        game.max_bandits = game.base_max_bandits + (game.bandit_spawn_multi[1] * game.player_count) + game.max_increase
 
     if game.can_spawn_bandits:
         bandit_position(game, number_spawned)
@@ -117,6 +117,9 @@ def update_physics(game):
             and game.base_bandit_spawnrate > 60):
         game.base_bandit_spawnrate -= 15
         if game.base_bandit_spawnrate < 60: game.base_bandit_spawnrate = 60
+    '''if game.game_tick % (FRAMERATE * game.difficulty_time * 4) == 0:
+        game.max_increase += 1
+    '''
 
     for item in game.objects:
         if not item.collected and item.lifetime <= item.despawn_time:

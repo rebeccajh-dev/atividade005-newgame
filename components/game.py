@@ -43,6 +43,7 @@ class Game:
         self.base_bandit_spawnrate = 240
         self.bandit_spawn_multi = [1, 2] # First for normal mode, second for ambush
         self.can_spawn_bandits = False
+        self.max_increase = 0
 
         # Base Ambush settings
         self.ambush_mode = False
@@ -93,6 +94,7 @@ class Game:
         self.ambush_start = self.base_ambush_start[:]
         self.defeat = False
         self.victory = False
+
         self.base_defeat_values = [
             False,  # Transition enabled
             0, 120,  # UFO blinking animation timer
@@ -127,19 +129,21 @@ class Game:
             self.game_tick += 1
 
     def game_reset(self):
+        self.sound.play('menu', -1)
+        self.game_state = 'menu'
+
         self.victory_transition = self.base_victory_values[:]
         self.defeat_transition = self.base_defeat_values[:]
         self.ambush_start = self.base_ambush_start[:]
         self.begin_start = self.base_begin_start[:]
         self.base_bandit_spawnrate = 240
-        self.sound.play('menu', -1)
-        self.game_state = 'menu'
         self.ambush_mode = False
         self.defeat = False
         self.victory = False
         self.ambush_fog.enabled = False
         self.text.begin_message.blink = False
         self.game_timer = 0
+        self.max_increase = 0
         self.ufo = Ufo()
         self.bandits = []
         self.bullets = []

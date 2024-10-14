@@ -22,6 +22,40 @@ def always_render(game):
             game.text.HUD_text_list[3] = False
             game.text.HUD_text_list[1] = 0
 
+def cutscene_draw(game, cutscene_type):
+    # Drawing temporary screen for special cutscenes
+    if cutscene_type == 'time up':
+        game.text.timer_text.current_color = (100, 255, 100)
+        time_up_tick = 0
+
+        while time_up_tick <= 25:
+            time_up_tick += 1
+
+            SCREEN.fill(game.level.background_color)
+            game.ufo.draw_ufo(game)
+            for terrain in game.level.map:
+                terrain.draw()
+
+            game.text.timer_text.string = '00:00'
+            if time_up_tick % 2 == 0: game.text.timer_text.draw()
+            pg.display.flip()
+
+            pg.time.delay(80)
+        game.text.timer_text.current_color = (255, 255, 255)
+    elif cutscene_type == 'rebuild ufo':
+        SCREEN.fill(game.level.background_color)
+        game.ufo.draw_ufo(game)
+        for terrain in game.level.map:
+            terrain.draw()
+
+        if game.player_1:
+            game.text.p1_points_text.string = str("{:05d}".format(game.player_1.score))
+            game.text.p1_points_text.draw()
+        if game.player_2:
+            game.text.p2_points_text.string = str("{:05d}".format(game.player_2.score))
+            game.text.p2_points_text.draw()
+        pg.display.flip()
+
 ''' ============================================================= '''
 ''' ========== HANDLING EVERYTHING THAT SHOWS IN MENU  ========== '''
 ''' ============================================================= '''
@@ -162,9 +196,10 @@ def render_round(game):
         game.ambush_mode = True
         game.ambush_start[5] = True
         game.ambush_start[8] = True
-        game.sound.play_sfx('ambush')
         game.sound.play('BANDIT-RAID', -1)
+        game.sound.play_sfx('ambush')
         game.ambush_fog.enabled = True
+        game.max_increase += 1
 
     game.ambush_fog.update(game)
     if game.ambush_mode:
@@ -200,8 +235,12 @@ def render_round(game):
         game.can_spawn_bandits = False
         game.ambush_fog.enabled = False
         game.sound.play('none')
+        game.sound.play_sfx('time_up')
+
+        cutscene_draw(game, 'time up')
 
         # Add points for every brick not destroyed at the end
+        live_bricks = 0
         for brick in game.ufo.ufos:
             rect, strength, brick_row, surface = brick
             game.sound.play_sfx('brick_build')
@@ -210,20 +249,20 @@ def render_round(game):
                 if game.player_2: game.player_2.score += 50
 
                 brick[1] = 100
+                live_bricks += 1
                 game.sound.play_sfx('points')
             else:
                 brick[1] = 1
 
             pg.time.delay(100)
+            cutscene_draw(game, 'rebuild ufo')
 
-            # Drawing temporary screen for UFO points effect
-            SCREEN.fill(game.level.background_color)
-            game.ufo.draw_ufo(game)
-            for terrain in game.level.map:
-                terrain.draw()
-
-            pg.display.flip()
-
+        if live_bricks >= len(game.ufo.ufos):
+            pg.time.delay(100)
+            game.sound.play_sfx('powerup_get')
+            if game.player_1: game.player_1.score += 1000
+            if game.player_2: game.player_2.score += 1000
+            cutscene_draw(game, 'rebuild ufo')
         pg.time.delay(1000)
 
         game.sound.play('you_should_probably_get_in_the_ufo_now', -1)
