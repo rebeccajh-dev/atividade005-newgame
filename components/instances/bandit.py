@@ -1,14 +1,16 @@
 import random
 from random import randint, choice
 from components.instances.bullet import Bullet
-from components.sound import Sound
+from components.instances.objects import Explosion
+from components.instances.objects import Objects
+
 from config import RANDOM_MOVE, SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN, MAX_BULLET_SPEED
 import math
 import pygame as pg
 
 class Bandit:
     def __init__(self, spawn_pos, config, game):
-        self.random_size = choice([50, 60, 70])
+        self.size = choice([50, 60, 70])
         self.item_chance = 60
         self.powerup_chance = 40
         self.base_shoot_cd = 180
@@ -19,7 +21,7 @@ class Bandit:
         self.can_shoot = True
 
         self.sprite = pg.image.load(f'assets/bandit_sprites/{self.name}.png').convert_alpha()
-        self.sprite = pg.transform.scale(self.sprite, (self.random_size, self.random_size))
+        self.sprite = pg.transform.scale(self.sprite, (self.size, self.size))
         self.rect = self.sprite.get_rect()  # Bandit size
         self.rect.x = spawn_pos[0]
         self.rect.y = spawn_pos[1]
@@ -37,7 +39,7 @@ class Bandit:
         self.in_screen = False
         self.spawn_grace = True
         self.is_moving = False
-        self.last_side = [self.random_size, 0] if self.name != 'drunk_bandit' else [self.random_size - 20, 0]
+        self.last_side = [self.size, 0] if self.name != 'drunk_bandit' else [self.size - 20, 0]
         self.change_move_cd = [0, 20]
 
         self.lifetime = 0
@@ -51,10 +53,8 @@ class Bandit:
 
         ''' SPECIAL VALUES FOR DIFFERENT BANDIT TYPES'''
         # Bomb bandit values
-        self.explode = [False, 0, 90, False, False, 0, 60, 20]
-        self.explosion = None
-        self.explosion_color = (255, 255, 255)
-        self.random_near_ufo = randint(70, 180)
+        self.explode = [False, 0, 90, False, False]
+        self.random_near_ufo = randint(40, 100)
 
         # Table or shielded bandit values
         self.shield = pg.image.load(f'assets/bullet_sprites/center_table.png').convert_alpha()
@@ -77,12 +77,12 @@ class Bandit:
         self.drink_anim = [False, 0 , 120, False,  0, 60, 0, 40, 1, 120]
         self.drink_puddle = None
         self.puddle_rect = None
-        self.puddle_size = [int(self.random_size * 0.3), int(self.random_size * 0.3)]
+        self.puddle_size = [int(self.size * 0.3), int(self.size * 0.3)]
 
         self.bottle_enabled = False if self.name != 'drunk_bandit' else True
 
         # Special buff values
-        self.shield_buff = pg.Surface((int(self.random_size * 1.2), int(self.random_size * 1.2)), pg.SRCALPHA)
+        self.shield_buff = pg.Surface((int(self.size * 1.2), int(self.size * 1.2)), pg.SRCALPHA)
         self.shield_buff.fill((80, 80, 255, 30))  # 128 is the alpha value (0 is fully
         self.shield_buff_enabled = False
         self.shield_buff_hp = 0
@@ -193,9 +193,9 @@ class Bandit:
         if self.shield_enabled:
             self.shield_sfx_cooldown[0] += 1
 
-            # Choosing the side position and rotation depending on left or right on screen
-            left_distance = [[self.random_size, 0], -180, 0 + self.rect.x]
-            right_distance = [[-self.random_size, 0], 180, SCREEN_WIDTH - self.rect.x]
+            # Choosing the side position and rotation depending on left_hand or right on screen
+            left_distance = [[self.size, 0], -180, 0 + self.rect.x]
+            right_distance = [[-self.size, 0], 180, SCREEN_WIDTH - self.rect.x]
             smallest_x = min(left_distance[2], right_distance[2])
 
             side_goal = left_distance if smallest_x == left_distance[2] else right_distance
@@ -220,8 +220,8 @@ class Bandit:
         # Handling totally legal and PG friendly drink bottle system for bandit
         if self.bottle_enabled:
             # Choosing the side position and flipping bottle depending on position
-            left_distance = [[self.random_size - 20, 0], 0 + self.rect.x, -90]
-            right_distance = [[-self.random_size + 20, 0], SCREEN_WIDTH - self.rect.x, 90]
+            left_distance = [[self.size - 20, 0], 0 + self.rect.x, -90]
+            right_distance = [[-self.size + 20, 0], SCREEN_WIDTH - self.rect.x, 90]
             smallest_x = min(left_distance[1], right_distance[1])
 
             side_goal = left_distance if smallest_x == left_distance[1] else right_distance
@@ -348,56 +348,43 @@ class Bandit:
                 elif self.explode[1] >= 8 and not self.explode[3]:
                     self.explode[1] = 0
                     self.explode[3] = True
-            elif self.lifetime >= 8:    # Creating the explosion
-                if not self.explode[0]:
-                    self.explode[1] = 0
-                    self.explode[0] = True
-                    game.sound.play_sfx('explode')
-                    self.explosion = pg.Rect(self.rect.x, self.rect.y,
-                                        self.random_size * 2,
-                                        self.random_size * 2)
-                    self.explosion.center = self.rect.center
+            elif self.lifetime >= 8 and not self.explode[0]:    # Creating the explosion
+                self.live_bandit = False
+                self.explode[0] = False
+                new_explosion = Explosion(game, self.rect.center, self.size * 2)
+                game.objects.append(new_explosion)
 
-                self.explode[1] += 1
-                self.explode[5] += 1
+    def damage_bandit(self, game, damage):
+        if self.live_bandit:
+            game.sound.play_sfx('bandit_damage')
 
-                # Changing colors for explosion effect
-                if self.explode[5] >= 8 and self.explosion_color != (255, 130, 0):
-                    self.explode[5] = 0
-                    self.explosion_color = (255, 130, 0)
-                elif self.explode[5] >= 8 and self.explosion_color != (255, 240, 0):
-                    self.explode[5] = 0
-                    self.explosion_color = (255, 240, 0)
+            if self.shield_buff_hp >= 1:
+                self.shield_buff_hp -= 1
+                self.shield_buff.set_alpha(self.shield_buff_hp * 30)
+            elif self.health >= 1:
+                self.health -= damage
 
-                if self.explode[1] >= self.explode[6]:
-                    self.live_bandit = False
+            if self.health < 1:
+                self.live_bandit = False
 
-    def update_bullets(self, game):
+                if self.item_drop:
+                    new_item = Objects(self.item_drop, self.rect)
+                    game.objects.append(new_item)
+
+
+    def collide_check(self, game):
         if self.drink_anim[3]: return
 
         for bullet in game.bullets:
             # Verify bullet collision with bandit
             if self.live_bandit and bullet.reflect and bullet.rect.colliderect(self.rect)\
-                and (self.name == 'cards_bandit' or bullet.name != 'card'):
-                game.sound.play_sfx('bandit_damage')
-
-                if self.shield_buff_hp >= 1:
-                    self.shield_buff_hp -= 1
-                    self.shield_buff.set_alpha(self.shield_buff_hp * 30)
-                    game.bullets.remove(bullet)
-                    continue
-                elif self.health > 1:
-                    self.health -= 1
-                    game.bullets.remove(bullet)
-                    continue
-
-                self.live_bandit = False
-                game.bullets.remove(bullet)
+                and (self.name == 'cards_bandit' or bullet.name != 'card') and not self.explode[0]:
+                self.damage_bandit(game, 1)
 
                 if bullet.player_owned[0]:
                     bullet.player_owned[1].score += self.points_value
-                    return self.item_drop
 
+                game.bullets.remove(bullet)
                 break
 
             # Verify bullet collision with bandit shield
@@ -496,9 +483,6 @@ class Bandit:
         if not self.explode[3]:
             SCREEN.blit(self.sprite, self.rect)
 
-        if self.explosion:
-            pg.draw.rect(SCREEN, self.explosion_color, self.explosion)
-
         if self.shield_enabled:
             SCREEN.blit(self.shield, self.shield_rect)
 
@@ -506,7 +490,7 @@ class Bandit:
             SCREEN.blit(self.bottle, self.bottle_rect)
 
         if self.shield_buff_enabled:
-            SCREEN.blit(self.shield_buff, (self.rect.centerx - int(self.random_size / 1.65),
-                                           self.rect.centery - int(self.random_size / 1.65)))
+            SCREEN.blit(self.shield_buff, (self.rect.centerx - int(self.size / 1.65),
+                                           self.rect.centery - int(self.size / 1.65)))
 
 

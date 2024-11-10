@@ -147,7 +147,7 @@ def render_round(game):
         game.text.p2_points_text.draw()
         game.text.move_tip.string = f'! {game.player_1.controls}/{game.player_2.controls} keys to move !'
 
-    for terrain in game.level.map:
+    '''for terrain in game.level.map:
         if terrain.size < 90:
             terrain_Zindex = terrain.rect.y + int(terrain.size / 2)
         else:
@@ -156,7 +156,7 @@ def render_round(game):
         if game.player_1 and game.player_1.rect.centery <= terrain_Zindex:
             terrain.draw()
         elif game.player_2 and game.player_2.rect.centery <= terrain_Zindex:
-            terrain.draw()
+            terrain.draw()'''
 
     game.ufo.draw_ufo(game)
 
@@ -198,7 +198,7 @@ def render_round(game):
         game.ambush_start[8] = True
         game.sound.play('BANDIT-RAID', -1)
         game.sound.play_sfx('ambush')
-        game.ambush_fog.enabled = True
+        # game.ambush_fog.enabled = True
         game.max_increase += 1
 
     game.ambush_fog.update(game)
@@ -241,7 +241,7 @@ def render_round(game):
 
         # Add points for every brick not destroyed at the end
         live_bricks = 0
-        for brick in game.ufo.ufos:
+        for brick in game.ufo.bricks:
             rect, strength, brick_row, surface = brick
             game.sound.play_sfx('brick_build')
             if strength > 0:
@@ -257,7 +257,7 @@ def render_round(game):
             pg.time.delay(100)
             cutscene_draw(game, 'rebuild ufo')
 
-        if live_bricks >= len(game.ufo.ufos):
+        if live_bricks >= len(game.ufo.bricks):
             pg.time.delay(100)
             game.sound.play_sfx('powerup_get')
             if game.player_1: game.player_1.score += 1000

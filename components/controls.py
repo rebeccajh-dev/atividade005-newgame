@@ -60,7 +60,7 @@ def handle_events(game):
     if keys[pg.K_BACKSPACE]:
         if game.game_state == 'menu' and (game.player_1 or game.player_2):
             game.player_count = 0
-            game.sound.play_sfx('carve')
+            game.sound.play_sfx('remove')
             game.player_1 = None
             game.player_2 = None
 

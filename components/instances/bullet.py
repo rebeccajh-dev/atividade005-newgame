@@ -96,11 +96,9 @@ class Bullet:
 
         # Deactivate shield and start cooldown timer if hit player
         if self.rect.colliderect(player.rect) and not self.player_owned[0] and player.shield_enabled:
-            player.shield_enabled = False
-            player.shield_cooldown = 0
+            player.damage_player(game)
             self.can_hit = False
             self.is_alive = False
-            game.sound.play_sfx('player_damage')
 
     def draw(self):
         SCREEN.blit(self.sprite, self.rect)

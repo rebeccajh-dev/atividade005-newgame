@@ -4,7 +4,6 @@ from config import SCREEN_WIDTH, COLOR_WHITE, COLOR_RED, SCREEN_HEIGHT, FRAMERAT
     AMBUSH_FILTER, VICTORY_COLOR, DEFEAT_COLOR, P2_TITLE_OFFSET
 
 from components.instances.bandit import Bandit
-from components.instances.objects import Objects
 
 import pygame as pg
 
@@ -19,11 +18,11 @@ def bandit_position(game, number_spawned):
     if (game.game_tick % bandit_spawnrate == 0
         and game.bandit_count < game.max_bandits):  # add bandits each 300 ticks
         for new_bandit in range(number_spawned):
-            spawn_direction = choice(['left', 'right'])
+            spawn_direction = choice(['left_hand', 'right'])
             start_pos = [0, 0,  # Position that spawns at first
                          0, 0]  # Goal position to move to
 
-            if spawn_direction == 'left':
+            if spawn_direction == 'left_hand':
                 start_pos[0] = -50
                 start_pos[1] = randint(10, SCREEN_HEIGHT - 40)
                 start_pos[2] = randint(30, 100)
@@ -121,49 +120,46 @@ def update_physics(game):
         game.max_increase += 1
     '''
 
-    for item in game.objects:
-        if not item.collected and item.lifetime <= item.despawn_time:
-            item.update()
-            item.check_collect(game, game.player_1)
-            item.check_collect(game, game.player_2)
+    for obj in game.objects:
+        if obj.type == 'item':
+            if not obj.collected and obj.lifetime <= obj.despawn_time:
+                obj.update()
+                obj.check_collect(game, game.player_1)
+                obj.check_collect(game, game.player_2)
 
-            if game.game_tick % FRAMERATE == 0:
-                item.lifetime += 1
-        else:
-            game.objects.remove(item)
+                if game.game_tick % FRAMERATE == 0:
+                    obj.lifetime += 1
+            else:
+                game.objects.remove(obj)
+        elif obj.type == 'explosion':
+            # Checking collisions with explosions
+            obj.update()
+            obj.collide_check(game)
 
     # Updating bandits
     for bandit in game.bandits:
         if bandit.live_bandit:
+            brick_count = len(game.ufo.bricks) - 1
+
             # Getting a random brick as a target
             # Allowing broken bricks is by design, or else it would be too unfair
             if bandit.name != 'bandit_hitman':
-                target = game.ufo.ufos[randint(0, len(game.ufo.ufos) - 1)][0].topleft
+                target = game.ufo.bricks[randint(0, brick_count)][0].topleft
             else:
                 if randint(1, 2) == 1 and game.player_1:
                     target = game.player_1.rect.topleft
                 elif game.player_2:
                     target = game.player_2.rect.topleft
                 else:
-                    target = game.ufo.ufos[randint(0, len(game.ufo.ufos) - 1)][0].topleft
+                    target = game.ufo.bricks[randint(0, brick_count)][0].topleft
 
             # Applhying chance to spawn loot on death
             bandit.update(game, target)
-            possible_loot = bandit.update_bullets(game)
+            bandit.collide_check(game)
 
-            if possible_loot:
-                new_item = Objects(possible_loot, bandit.rect)
-                game.objects.append(new_item)
-
-            # Checking various collisions with the bandit explosion
-            if bandit.explosion and bandit.explode[1] <= bandit.explode[7]:
-                game.ufo.explosion_collide_check(game, bandit.explosion)
-                if game.player_1: game.player_1.damage_collide_check(game, bandit.explosion)
-                if game.player_2: game.player_1.damage_collide_check(game, bandit.explosion)
-
-            if bandit.puddle_rect:
+            '''if bandit.puddle_rect:
                 if game.player_1: game.player_1.damage_collide_check(game, bandit.puddle_rect)
-                if game.player_2: game.player_1.damage_collide_check(game, bandit.puddle_rect)
+                if game.player_2: game.player_1.damage_collide_check(game, bandit.puddle_rect)'''
 
             bandit.shield_collide_check(game, game.player_1)
             bandit.shield_collide_check(game, game.player_2)

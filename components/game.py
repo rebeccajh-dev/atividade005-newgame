@@ -132,6 +132,7 @@ class Game:
         self.sound.play('menu', -1)
         self.game_state = 'menu'
 
+        # self.ambush_fog.enabled = False
         self.victory_transition = self.base_victory_values[:]
         self.defeat_transition = self.base_defeat_values[:]
         self.ambush_start = self.base_ambush_start[:]
@@ -140,7 +141,6 @@ class Game:
         self.ambush_mode = False
         self.defeat = False
         self.victory = False
-        self.ambush_fog.enabled = False
         self.text.begin_message.blink = False
         self.game_timer = 0
         self.max_increase = 0

@@ -12,7 +12,7 @@ class Ufo:
         self.width = SQUARE_SIZE
         self.height = SQUARE_SIZE
         self.size = SQUARE_SIZE
-        self.ufos = []
+        self.bricks = []
         self.center_position()
         self.rect = pg.Rect(SCREEN_WIDTH // 2 - self.size // 2, SCREEN_HEIGHT // 2 - self.size // 2, self.size,
                             self.size)
@@ -29,61 +29,46 @@ class Ufo:
         self.can_get_in = False
         self.rect_offset = 0
 
+        self.damage_tick = 0
+        self.damage_sfx_cd = 15
+
     def ufo_collide_check(self, game, bullet):
-        if not self.ufos:
+        if not self.bricks:
             return
 
-        brick_amount = len(self.ufos)
-        broken_amount = 0
+        brick_amount = len(self.bricks)
 
         # check the collides by the lists
         for i in range(brick_amount):
-            rect, strength, brick_row, surface = self.ufos[i]
-
-            if self.ufos[i][1] <= 0:
-                broken_amount += 1
+            rect, strength, brick_row, surface = self.bricks[i]
 
             # Checks if the bullet_sprites collides w ufo
             if (bullet.rect.colliderect(rect) and bullet.can_hit
-                and self.ufos[i][1] >= 1):
+                and self.bricks[i][1] >= 1):
                 bullet.can_hit = False
                 bullet.is_alive = False
                 self.take_damage(game, i)
                 break
 
-        if broken_amount >= brick_amount:
-            self.fully_broken = True
-
-    def explosion_collide_check(self, game, explosion):
-        if not self.ufos:
-            return
-
-        brick_amount = len(self.ufos)
+    def take_damage(self, game, index):
+        brick_amount = len(self.bricks)
         broken_amount = 0
 
-        # check the collides by the lists
+        if index < len(self.bricks):
+            self.bricks[index][1] -= 1
+            if self.damage_tick >= self.damage_sfx_cd:
+                game.sound.play_sfx('brick_break')
+                self.damage_tick = 0
+
+            if self.bricks[index][1] < 0:
+                self.bricks[index][1] = 0  # Manter a força em zero
+
         for i in range(brick_amount):
-            rect, strength, brick_row, surface = self.ufos[i]
-
-            if self.ufos[i][1] <= 0:
+            if self.bricks[i][1] <= 0:
                 broken_amount += 1
-
-            # Checks if the bullet_sprites collides w ufo
-            if (explosion.colliderect(rect)
-                and self.ufos[i][1] >= 1):
-                self.take_damage(game, i)
-                break
 
         if broken_amount >= brick_amount:
             self.fully_broken = True
-
-    def take_damage(self, game, index):
-        if index < len(self.ufos):
-            self.ufos[index][1] -= 1
-            game.sound.play_sfx('brick_break')
-
-            if self.ufos[index][1] < 0:
-                self.ufos[index][1] = 0  # Manter a força em zero
 
     def center_position(self):
         # Define the UFO grid as a list of lists
@@ -95,25 +80,24 @@ class Ufo:
             [1, 1, 1, 1, 1]
         ]
 
-        # Calculate the total height of the UFOs
+        # Calculate the total height of the bricks
         total_height = sum(len(row) * self.height for row in ufo_grid)
 
         # Calculate the starting y position to center the rows
         y = (SCREEN_HEIGHT - 400)
 
         for row_index, strengths in enumerate(ufo_grid):
-            strength = strengths[0]  # Assuming uniform strength for each column in this row
             row_width = len(strengths) * self.width
 
             # Calculate the starting x position for the current row
             x = (SCREEN_WIDTH - row_width) // 2
 
-            # Add UFOs for the current row
+            # Add bricks for the current row
             for col_index, strength in enumerate(strengths):
                 rect = pg.Rect(x + col_index * self.width, y + row_index * self.height,
                                self.width - 3, self.height - 3)
                 surface = pg.Surface(rect.size, pg.SRCALPHA)
-                self.ufos.append([rect, strength, row_index, surface])
+                self.bricks.append([rect, strength, row_index, surface])
 
     def victory_ufo(self, player1, player2):
         check_1 = False
@@ -146,9 +130,10 @@ class Ufo:
 
     def draw_ufo(self, game):
         self.blink[1] += 1
+        if self.damage_tick < self.damage_sfx_cd: self.damage_tick += 1
 
         if not self.blink[3] and not self.got_inside and not self.image_mode:
-            for brick in self.ufos:
+            for brick in self.bricks:
                 rect, strength, brick_row, surface = brick
                 # change the color based in the strength
                 if strength <= 0:

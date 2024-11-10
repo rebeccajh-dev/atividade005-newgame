@@ -45,7 +45,8 @@ class Player:
         # Player values
         self.score = 0
         self.speed = BASE_PLAYER_SPEED
-        self.shield_cooldown = 0
+        self.shield_tick = 0
+        self.shield_cooldown = 150
         self.push_power = 15
         self.shoot_cooldown = 100
         self.shoot_tick = 0
@@ -54,6 +55,8 @@ class Player:
 
         self.ghost_sfx_tick = 0
         self.ghost_sfx_cd = 10
+        self.recovery_tick = 0
+        self.recovery_cd = 60
 
         self.first_move = False
         self.shield_enabled = True
@@ -85,7 +88,7 @@ class Player:
             shield_increment_x = 15 * self.shield_powerup[1]
             shield_increment_y = 2 * self.shield_powerup[1]
 
-        if direction == 'left':
+        if direction == 'left_hand':
             self.direction[0] = -self.speed
             self.last_direction[0] = -2
 
@@ -111,7 +114,7 @@ class Player:
             self.direction[1] = self.speed
             self.last_direction[1] = 2
 
-            if self.last_key == 'left' or self.last_key == 'right':
+            if self.last_key == 'left_hand' or self.last_key == 'right':
                 self.eyes_offset[1] = 4
             else:
                 self.last_direction[0] = 0
@@ -124,7 +127,7 @@ class Player:
             self.direction[1] = -self.speed
             self.last_direction[1] = -2
 
-            if self.last_key == 'left' or self.last_key == 'right':
+            if self.last_key == 'left_hand' or self.last_key == 'right':
                 self.eyes_offset[1] = -4
             else:
                 self.last_direction[0] = 0
@@ -147,13 +150,13 @@ class Player:
         # Define a dictionary that maps control types to their respective key mappings
         key_mappings = {
             'WASD': {
-                'left': pg.K_a,
+                'left_hand': pg.K_a,
                 'right': pg.K_d,
                 'down': pg.K_s,
                 'up': pg.K_w
             },
             'ARROWS': {
-                'left': pg.K_LEFT,
+                'left_hand': pg.K_LEFT,
                 'right': pg.K_RIGHT,
                 'down': pg.K_DOWN,
                 'up': pg.K_UP
@@ -168,8 +171,8 @@ class Player:
             controls = key_mappings[self.controls]
 
             # Directional key checks based on control type
-            if keys[controls['left']]:
-                self.change_direction('left')
+            if keys[controls['left_hand']]:
+                self.change_direction('left_hand')
             elif keys[controls['right']]:
                 self.change_direction('right')
 
@@ -220,15 +223,18 @@ class Player:
 
         # Applying shield cooldown timer
         if not self.shield_enabled:
-            self.shield_cooldown += 1
-            if self.shield_cooldown % (3 * FRAMERATE) == 0:
+            self.shield_tick += 1
+            if self.shield_tick % self.shield_cooldown == 0:
                 self.shield_enabled = True
                 game.sound.play_sfx('ghost')
+        else:
+            self.recovery_tick += 1
 
-    def damage_collide_check(self, game, hitbox):
-        if self.rect.colliderect(hitbox) and self.shield_enabled:
+    def damage_player(self, game):
+        if self.shield_enabled and self.recovery_tick >= self.recovery_cd:
             self.shield_enabled = False
-            self.shield_cooldown = 0
+            self.shield_tick = 0
+            self.recovery_tick = 0
             game.sound.play_sfx('player_damage')
 
 

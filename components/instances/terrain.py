@@ -2,6 +2,7 @@ import pygame as pg
 from random import randint, choice
 
 from config import SCREEN
+from components.instances.objects import Objects
 
 class Decoration:
     def __init__(self, name, size, position, color):
@@ -35,6 +36,7 @@ class Terrain:
                                  self.size / level.terrain_area_reduction)
         self.area_rect.center = self.rect.center
         self.decorations = []
+        self.alive = True
 
         if self.name == 'table':
             deco_amount = randint(0, 2)
@@ -98,6 +100,19 @@ class Terrain:
         for terrain in level.map:
             if self.area_rect.colliderect(terrain.area_rect) and terrain.index != self.index:
                 level.map.remove(terrain)
+
+    def destroy(self, game):
+        if self.alive:
+            self.alive = False
+            game.sound.play_sfx('remove')
+            game.level.map.remove(self)
+
+            if self.name == 'luck_statue':
+                new_item = Objects('brick_pu', self.rect)
+                game.objects.append(new_item)
+            elif randint(1, 4) == 1:
+                new_item = Objects('brick', self.rect)
+                game.objects.append(new_item)
 
     def draw(self):
         # Choice to see the area hitbox
